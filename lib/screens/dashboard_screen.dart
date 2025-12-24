@@ -139,15 +139,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   _buildStatCard(
                     'Total Products',
-                    '${dash.stats?.totalOrders ?? 0}', // Note: Backend provides total_orders, use that or products count if available
+                    '${dash.stats?.totalProducts ?? 0}',
                     Icons.inventory_2,
                     Colors.orange,
                   ),
                   _buildStatCard(
                     'Average Rating',
-                    '${dash.stats?.averageOrderValue.toStringAsFixed(1) ?? 0}',
+                    '${dash.stats?.averageRating.toStringAsFixed(1) ?? 0}',
                     Icons.star,
                     Colors.purple,
+                  ),
+                  _buildStatCard(
+                    'Avg Order Value',
+                    '₹${dash.stats?.averageOrderValue.toStringAsFixed(0) ?? 0}',
+                    Icons.payments,
+                    Colors.teal,
                   ),
                 ],
               );

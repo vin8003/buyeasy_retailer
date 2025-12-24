@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../models/product_model.dart';
 import 'product_form_screen.dart';
 import '../providers/product_provider.dart';
+import '../utils/constants.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -72,7 +73,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             borderRadius: BorderRadius.circular(4),
                             child: product.image != null
                                 ? Image.network(
-                                    'http://localhost:8000${product.image}', // Assuming relative path
+                                    '${ApiConstants.serverUrl}${product.image}', // Assuming relative path
                                     width: 50,
                                     height: 50,
                                     fit: BoxFit.cover,

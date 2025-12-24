@@ -4,6 +4,8 @@ import '../models/order_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
 import 'package:intl/intl.dart';
+import 'order_edit_screen.dart';
+import '../utils/constants.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -181,7 +183,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
-                              item.productImage!,
+                              item.productImage!.startsWith('http')
+                                  ? item.productImage!
+                                  : '${ApiConstants.serverUrl}${item.productImage!}',
                               fit: BoxFit.cover,
                             ),
                           )
@@ -288,6 +292,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             _buildStatusButtons(order, provider, token),
             if (order.status != 'cancelled' && order.status != 'delivered') ...[
               const Divider(),
+              const Divider(),
+              if (order.status == 'pending') ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => OrderEditScreen(order: order),
+                        ),
+                      );
+                      if (result == true) {
+                        provider.fetchOrderDetails(token!, order.id);
+                      }
+                    },
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Edit Order Details'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(
@@ -515,6 +541,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     switch (status.toLowerCase()) {
       case 'pending':
         return Colors.orange;
+      case 'waiting_for_customer_approval':
+        return Colors.purple;
       case 'confirmed':
         return Colors.blue;
       case 'processing':

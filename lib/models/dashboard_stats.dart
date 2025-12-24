@@ -8,6 +8,8 @@ class DashboardStats {
   final int todayOrders;
   final double todayRevenue;
   final double averageOrderValue;
+  final int totalProducts;
+  final double averageRating;
   final List<dynamic> topCustomers;
   final List<dynamic> recentOrders;
 
@@ -21,6 +23,8 @@ class DashboardStats {
     required this.todayOrders,
     required this.todayRevenue,
     required this.averageOrderValue,
+    required this.totalProducts,
+    required this.averageRating,
     required this.topCustomers,
     required this.recentOrders,
   });
@@ -38,6 +42,8 @@ class DashboardStats {
       averageOrderValue: double.parse(
         json['average_order_value']?.toString() ?? '0',
       ),
+      totalProducts: json['total_products'] ?? 0,
+      averageRating: double.parse(json['average_rating']?.toString() ?? '0'),
       topCustomers: json['top_customers'] ?? [],
       recentOrders: json['recent_orders'] ?? [],
     );

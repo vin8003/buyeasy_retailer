@@ -108,6 +108,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
     switch (status.toLowerCase()) {
       case 'pending':
         return Colors.orange;
+      case 'waiting_for_customer_approval':
+        return Colors.purple;
       case 'confirmed':
         return Colors.blue;
       case 'processing':

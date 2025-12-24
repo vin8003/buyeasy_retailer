@@ -226,7 +226,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
-                      value: _selectedCategoryId,
+                      initialValue: _selectedCategoryId,
                       decoration: const InputDecoration(labelText: 'Category'),
                       items: provider.categories.map((c) {
                         return DropdownMenuItem<int>(
@@ -239,7 +239,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
-                      value: _selectedBrandId,
+                      initialValue: _selectedBrandId,
                       decoration: const InputDecoration(labelText: 'Brand'),
                       items: provider.brands.map((b) {
                         return DropdownMenuItem<int>(

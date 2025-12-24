@@ -70,4 +70,35 @@ class OrderService {
       throw Exception('Failed to cancel order');
     }
   }
+
+  Future<void> modifyOrder(
+    String token,
+    int orderId,
+    List<Map<String, dynamic>> items,
+    String? deliveryMode,
+    double? discountAmount,
+  ) async {
+    final Map<String, dynamic> body = {'items': items};
+
+    if (deliveryMode != null) {
+      body['delivery_mode'] = deliveryMode;
+    }
+
+    if (discountAmount != null) {
+      body['discount_amount'] = discountAmount;
+    }
+
+    final response = await http.post(
+      Uri.parse('${ApiConstants.orders}$orderId/modify/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to modify order: ${response.body}');
+    }
+  }
 }
