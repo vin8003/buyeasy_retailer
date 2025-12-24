@@ -19,11 +19,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final token = context.read<AuthProvider>().token;
-      if (token != null) {
-        context.read<ProductProvider>().fetchProducts(token);
-      }
+      _refreshProducts();
     });
+  }
+
+  void _refreshProducts() {
+    final token = context.read<AuthProvider>().token;
+    if (token != null) {
+      context.read<ProductProvider>().fetchProducts(token);
+    }
   }
 
   @override
@@ -31,61 +35,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final productProvider = context.watch<ProductProvider>();
     final token = context.read<AuthProvider>().token;
 
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'My Products',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProductFormScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add Product'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: productProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : productProvider.products.isEmpty
-                ? const Center(child: Text('No products found.'))
-                : ListView.builder(
-                    itemCount: productProvider.products.length,
-                    itemBuilder: (context, index) {
-                      final product = productProvider.products[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: product.image != null
-                                ? Image.network(
-                                    '${ApiConstants.serverUrl}${product.image}', // Assuming relative path
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              width: 50,
-                                              height: 50,
-                                              color: Colors.grey[300],
-                                              child: const Icon(
-                                                Icons.broken_image,
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Products'),
@@ -113,7 +62,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.end, // Align button to the end
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(
                   onPressed: () {
@@ -122,7 +71,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       MaterialPageRoute(
                         builder: (context) => const ProductFormScreen(),
                       ),
-                    ).then((_) => _refreshProducts()); // Refresh after adding
+                    ).then((_) => _refreshProducts());
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Add Product'),
@@ -134,168 +83,128 @@ class _ProductListScreenState extends State<ProductListScreen> {
               child: productProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : productProvider.products.isEmpty
-                      ? const Center(child: Text('No products found.'))
-                      : ListView.builder(
-                          itemCount: productProvider.products.length,
-                          itemBuilder: (context, index) {
-                            final product = productProvider.products[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                leading: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: product.image != null
-                                      ? Image.network(
-                                          '${ApiConstants.serverUrl}${product.image}', // Assuming relative path
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  Container(
-                                                    width: 50,
-                                                    height: 50,
-                                                    color: Colors.grey[300],
-                                                    child: const Icon(
-                                                      Icons.broken_image,
-                                                    ),
-                                                  ),
-                                        )
-                                      : Container(
-                                          width: 50,
-                                          height: 50,
-                                          color: Colors.grey[200],
-                                          child: const Icon(Icons.image),
-                                        ),
+                  ? const Center(child: Text('No products found.'))
+                  : ListView.builder(
+                      itemCount: productProvider.products.length,
+                      itemBuilder: (context, index) {
+                        final product = productProvider.products[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: product.image != null
+                                  ? Image.network(
+                                      '${ApiConstants.serverUrl}${product.image}',
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                width: 50,
+                                                height: 50,
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                ),
+                                              ),
+                                    )
+                                  : Container(
+                                      width: 50,
+                                      height: 50,
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.image),
+                                    ),
+                            ),
+                            title: Text(product.name),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${product.categoryName ?? 'No Category'} • ${product.unit}',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
                                 ),
-                                title: Text(product.name),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                Text(
+                                  'Stock: ${product.quantity}',
+                                  style: TextStyle(
+                                    color: product.quantity < 10
+                                        ? Colors.red
+                                        : Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '${product.categoryName ?? 'No Category'} • ${product.unit}',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Stock: ${product.quantity}',
-                                      style: TextStyle(
-                                        color: product.quantity < 10
-                                            ? Colors.red
-                                            : Colors.green,
+                                      '₹${product.price}',
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                        fontSize: 16,
                                       ),
                                     ),
+                                    if (product.originalPrice != null)
+                                      Text(
+                                        '₹${product.originalPrice}',
+                                        style: const TextStyle(
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                   ],
                                 ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          '₹${product.price}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        if (product.originalPrice != null)
-                                          Text(
-                                            '₹${product.originalPrice}',
-                                            style: const TextStyle(
-                                              decoration:
-                                                  TextDecoration.lineThrough,
-                                              color: Colors.grey,
-                                              fontSize: 12,
-                                            ),
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                'Stock: ${product.quantity}',
-                                style: TextStyle(
-                                  color: product.quantity < 10
-                                      ? Colors.red
-                                      : Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '₹${product.price}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
                                   ),
-                                  if (product.originalPrice != null)
-                                    Text(
-                                      '₹${product.originalPrice}',
-                                      style: const TextStyle(
-                                        decoration: TextDecoration.lineThrough,
-                                        color: Colors.grey,
-                                        fontSize: 12,
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            ProductFormScreen(product: product),
                                       ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
+                                    ).then((_) => _refreshProducts());
+                                  },
                                 ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          ProductFormScreen(product: product),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    _showDeleteDialog(
+                                      context,
+                                      product,
+                                      productProvider,
+                                      token,
+                                    );
+                                  },
                                 ),
-                                onPressed: () {
-                                  _showDeleteDialog(
-                                    context,
-                                    product,
-                                    productProvider,
-                                    token,
-                                  );
-                                },
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
