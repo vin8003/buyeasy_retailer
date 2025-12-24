@@ -13,6 +13,7 @@ class ApiConstants {
   static const String createProduct = '$baseUrl/products/create/';
   static const String categories = '$baseUrl/products/categories/';
   static const String brands = '$baseUrl/products/brands/';
+  static const String uploadProducts = '$baseUrl/products/upload/';
   static String productDetail(int id) => '$baseUrl/products/$id/';
   static String updateProduct(int id) => '$baseUrl/products/$id/update/';
   static String deleteProduct(int id) => '$baseUrl/products/$id/delete/';

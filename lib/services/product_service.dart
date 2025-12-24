@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
@@ -108,6 +109,26 @@ class ProductService {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     } else {
       throw Exception('Failed to load brands');
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadProducts(String token, File file) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse(ApiConstants.uploadProducts),
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to upload products');
     }
   }
 }
