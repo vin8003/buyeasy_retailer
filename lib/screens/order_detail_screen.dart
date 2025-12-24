@@ -4,6 +4,8 @@ import '../models/order_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
+import '../services/notification_service.dart';
 import 'order_edit_screen.dart';
 import '../utils/constants.dart';
 
@@ -18,12 +20,25 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   final TextEditingController _cancelReasonController = TextEditingController();
+  StreamSubscription? _notificationSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchDetails();
+    });
+    _listenForNotifications();
+  }
+
+  void _listenForNotifications() {
+    _notificationSubscription = NotificationService().updateStream.listen((
+      data,
+    ) {
+      if (data['event'] == 'order_refresh' &&
+          data['order_id'] == widget.orderId.toString()) {
+        _fetchDetails();
+      }
     });
   }
 
@@ -37,6 +52,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   @override
   void dispose() {
     _cancelReasonController.dispose();
+    _notificationSubscription?.cancel();
     super.dispose();
   }
 

@@ -6,6 +6,8 @@ import 'order_list_screen.dart';
 import 'profile_screen.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/order_provider.dart';
+import '../services/notification_service.dart';
+import 'dart:async';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,6 +18,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  StreamSubscription? _notificationSubscription;
 
   @override
   void initState() {
@@ -23,6 +26,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
     });
+    _listenForNotifications();
+  }
+
+  void _listenForNotifications() {
+    _notificationSubscription = NotificationService().updateStream.listen((
+      data,
+    ) {
+      if (data['type'] == 'new_order' || data['event'] == 'order_refresh') {
+        _refreshData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
   }
 
   void _refreshData() {

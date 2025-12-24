@@ -7,8 +7,24 @@ import 'providers/order_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'services/notification_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await Firebase.initializeApp();
+    await NotificationService().initialize();
+    debugPrint('Firebase/Notifications initialized successfully');
+  } catch (e) {
+    debugPrint('------------------------------------------------');
+    debugPrint('FIREBASE ALERT: Initialization failed.');
+    debugPrint('Ensure you have added the web config to index.html');
+    debugPrint('Error: $e');
+    debugPrint('------------------------------------------------');
+  }
+
   runApp(
     MultiProvider(
       providers: [

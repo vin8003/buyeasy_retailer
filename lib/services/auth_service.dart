@@ -33,4 +33,23 @@ class AuthService {
       throw Exception('Failed to get profile');
     }
   }
+
+  Future<void> registerDevice(String token, String fcmToken) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.registerDevice),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'registration_id': fcmToken,
+        'type': 'android', // Or detect platform
+        'name': 'retailer_app',
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      print('Failed to register device: ${response.body}');
+    }
+  }
 }

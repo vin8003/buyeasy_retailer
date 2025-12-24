@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -40,6 +41,16 @@ class AuthProvider with ChangeNotifier {
       _token = data['tokens']['access']; // JWT access token
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('access_token', _token!);
+
+      // Register Device
+      try {
+        final fcmToken = await NotificationService().getToken();
+        if (fcmToken != null) {
+          await _authService.registerDevice(_token!, fcmToken);
+        }
+      } catch (e) {
+        debugPrint('Device registration error: $e');
+      }
 
       await fetchProfile();
     } finally {

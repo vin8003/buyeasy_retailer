@@ -6,6 +6,7 @@ class ApiConstants {
   static const String login = '$baseUrl/auth/retailer/login/';
   static const String signup = '$baseUrl/auth/retailer/signup/';
   static const String profile = '$baseUrl/auth/profile/';
+  static const String registerDevice = '$baseUrl/auth/device/register/';
 
   // Product endpoints
   static const String products = '$baseUrl/products/';
