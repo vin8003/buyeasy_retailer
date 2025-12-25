@@ -361,9 +361,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
 
     List<String> nextStatuses = [];
-    if (order.status == 'pending')
+    if (order.status == 'pending') {
       nextStatuses = ['confirmed'];
-    else if (order.status == 'confirmed')
+    } else if (order.status == 'confirmed')
       nextStatuses = ['processing', 'packed'];
     else if (order.status == 'processing')
       nextStatuses = ['packed'];
@@ -377,8 +377,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       nextStatuses = ['delivered'];
     }
 
-    if (nextStatuses.isEmpty)
+    if (nextStatuses.isEmpty) {
       return const Text('No status transitions available.');
+    }
 
     return Wrap(
       spacing: 8,

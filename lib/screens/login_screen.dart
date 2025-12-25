@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'phone_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +22,20 @@ class _LoginScreenState extends State<LoginScreen> {
           _usernameController.text,
           _passwordController.text,
         );
+
+        if (!mounted) return;
+        final authProvider = context.read<AuthProvider>();
+        if (authProvider.user != null && !authProvider.user!.isPhoneVerified) {
+          // SKIP VERIFICATION FOR NOW as per user request
+          // Navigator.of(context).pushReplacement(
+          //   MaterialPageRoute(
+          //     builder: (context) => PhoneVerificationScreen(
+          //       phoneNumber: authProvider.user!.phoneNumber,
+          //     ),
+          //   ),
+          // );
+          // return;
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(

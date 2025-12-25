@@ -59,6 +59,32 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> verifyOtp(
+    String phone, {
+    String? otp,
+    String? firebaseToken,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final data = await _authService.verifyOtp(
+        phone,
+        otp: otp,
+        firebaseToken: firebaseToken,
+      );
+      if (data['tokens'] != null) {
+        _token = data['tokens']['access'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', _token!);
+        await fetchProfile();
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchProfile() async {
     if (_token == null) return;
     final data = await _authService.getProfile(_token!);

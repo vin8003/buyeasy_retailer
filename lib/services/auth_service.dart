@@ -52,4 +52,27 @@ class AuthService {
       print('Failed to register device: ${response.body}');
     }
   }
+
+  Future<Map<String, dynamic>> verifyOtp(
+    String phone, {
+    String? otp,
+    String? firebaseToken,
+  }) async {
+    final body = <String, String>{'phone_number': phone};
+    if (otp != null) body['otp_code'] = otp;
+    if (firebaseToken != null) body['firebase_token'] = firebaseToken;
+
+    final response = await http.post(
+      Uri.parse(ApiConstants.verifyOtp),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to verify OTP');
+    }
+  }
 }

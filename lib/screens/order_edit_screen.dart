@@ -8,7 +8,7 @@ import '../utils/constants.dart';
 class OrderEditScreen extends StatefulWidget {
   final OrderModel order;
 
-  const OrderEditScreen({Key? key, required this.order}) : super(key: key);
+  const OrderEditScreen({super.key, required this.order});
 
   @override
   _OrderEditScreenState createState() => _OrderEditScreenState();
@@ -122,7 +122,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  ..._items.map((item) => _buildItemCard(item)).toList(),
+                  ..._items.map((item) => _buildItemCard(item)),
                   const Divider(height: 32),
                   _buildSummarySection(),
                   const SizedBox(height: 20),
@@ -206,7 +206,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         DropdownButtonFormField<String>(
-          value: _deliveryMode,
+          initialValue: _deliveryMode,
           items: const [
             DropdownMenuItem(value: 'delivery', child: Text('Delivery')),
             DropdownMenuItem(value: 'pickup', child: Text('Pickup')),
