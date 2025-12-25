@@ -8,6 +8,7 @@ import 'dart:async';
 import '../services/notification_service.dart';
 import 'order_edit_screen.dart';
 import '../utils/constants.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -441,6 +442,48 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
               Text(order.specialInstructions!),
+            ],
+            if (order.deliveryLatitude != null &&
+                order.deliveryLongitude != null) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Delivery Location:',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 200,
+                width: double.infinity,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(
+                        order.deliveryLatitude!,
+                        order.deliveryLongitude!,
+                      ),
+                      zoom: 15,
+                    ),
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('delivery_loc'),
+                        position: LatLng(
+                          order.deliveryLatitude!,
+                          order.deliveryLongitude!,
+                        ),
+                        infoWindow: InfoWindow(title: order.customerName),
+                      ),
+                    },
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    scrollGesturesEnabled: false,
+                    zoomGesturesEnabled: false,
+                    tiltGesturesEnabled: false,
+                    rotateGesturesEnabled: false,
+                    mapToolbarEnabled: true,
+                  ),
+                ),
+              ),
             ],
           ],
         ),

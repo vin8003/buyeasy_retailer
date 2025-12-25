@@ -59,6 +59,8 @@ class OrderModel {
   final String? customerPhone;
   final String? customerEmail;
   final List<OrderItem>? items;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   final String? updatedAt;
   final String? confirmedAt;
   final String? deliveredAt;
@@ -85,6 +87,8 @@ class OrderModel {
     this.customerPhone,
     this.customerEmail,
     this.items,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
     this.updatedAt,
     this.confirmedAt,
     this.deliveredAt,
@@ -120,6 +124,12 @@ class OrderModel {
       customerEmail: json['customer_email'],
       items: json['items'] != null
           ? (json['items'] as List).map((i) => OrderItem.fromJson(i)).toList()
+          : null,
+      deliveryLatitude: json['delivery_latitude'] != null
+          ? double.parse(json['delivery_latitude'].toString())
+          : null,
+      deliveryLongitude: json['delivery_longitude'] != null
+          ? double.parse(json['delivery_longitude'].toString())
           : null,
       updatedAt: json['updated_at'],
       confirmedAt: json['confirmed_at'],
