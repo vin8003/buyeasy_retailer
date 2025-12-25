@@ -27,4 +27,7 @@ class ApiConstants {
   static String currentOrders = '$baseUrl/orders/current/';
   static String orderHistory = '$baseUrl/orders/history/';
   static String orderStats = '$baseUrl/orders/stats/';
+
+  // Retailer endpoints
+  static String rewardConfig = '$baseUrl/retailers/reward-config/';
 }
