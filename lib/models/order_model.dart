@@ -65,6 +65,9 @@ class OrderModel {
   final String? confirmedAt;
   final String? deliveredAt;
   final String? cancelledAt;
+  // Loyalty fields
+  final double? pointsRedeemed;
+  final double? discountFromPoints;
 
   OrderModel({
     required this.id,
@@ -93,6 +96,8 @@ class OrderModel {
     this.confirmedAt,
     this.deliveredAt,
     this.cancelledAt,
+    this.pointsRedeemed,
+    this.discountFromPoints,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -135,6 +140,12 @@ class OrderModel {
       confirmedAt: json['confirmed_at'],
       deliveredAt: json['delivered_at'],
       cancelledAt: json['cancelled_at'],
+      pointsRedeemed: json['points_redeemed'] != null
+          ? double.tryParse(json['points_redeemed'].toString())
+          : null,
+      discountFromPoints: json['discount_from_points'] != null
+          ? double.tryParse(json['discount_from_points'].toString())
+          : null,
     );
   }
 }

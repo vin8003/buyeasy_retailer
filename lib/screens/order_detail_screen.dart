@@ -251,6 +251,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 '-₹${order.discountAmount?.toStringAsFixed(2)}',
                 color: Colors.green,
               ),
+            if (order.discountFromPoints != null &&
+                order.discountFromPoints! > 0)
+              _buildSummaryRow(
+                'Points Discount',
+                '-₹${order.discountFromPoints?.toStringAsFixed(2)}',
+                color: Colors.green,
+              ),
+            if (order.pointsRedeemed != null && order.pointsRedeemed! > 0)
+              _buildSummaryRow(
+                'Points Redeemed',
+                '${order.pointsRedeemed!.toInt()} pts',
+                fontSize: 12,
+                color: Colors.orange,
+              ),
             const Divider(),
             _buildSummaryRow(
               'Total Amount',

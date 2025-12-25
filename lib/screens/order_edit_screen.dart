@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
 import '../services/order_service.dart';
+import '../services/reward_service.dart';
+import '../models/reward_configuration.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 
@@ -20,6 +22,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
   late TextEditingController _discountController;
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  RewardConfiguration? _rewardConfig;
 
   // Track changes
   final Map<int, int> _quantityChanges = {};
@@ -41,6 +44,25 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     _discountController.addListener(() {
       if (mounted) setState(() {});
     });
+    _fetchRewardConfig();
+  }
+
+  Future<void> _fetchRewardConfig() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.token != null) {
+        final config = await RewardService().getRewardConfiguration(
+          authProvider.token!,
+        );
+        if (mounted) {
+          setState(() {
+            _rewardConfig = config;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching reward config: $e');
+    }
   }
 
   @override
@@ -64,7 +86,6 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
         int newQty = _quantityChanges[item.id]!;
         double newPrice = _priceChanges[item.id]!;
 
-        // Only include if meaningful change or just send all current state (easier)
         // Sending all with current values
         itemsPayload.add({
           'id': item.id,
@@ -142,7 +163,41 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
 
     double deliveryFee = _deliveryMode == 'delivery' ? 50 : 0;
     double discount = double.tryParse(_discountController.text) ?? 0;
-    double total = subtotal + deliveryFee - discount;
+
+    // Total before points is what we used for limits in backend
+    double totalBeforePoints = subtotal + deliveryFee - discount;
+    if (totalBeforePoints < 0) totalBeforePoints = 0;
+
+    double pointsRefundValue = 0;
+    double currentPointsValue = 0;
+
+    // Calculate potential refund
+    if (_rewardConfig != null &&
+        widget.order.pointsRedeemed != null &&
+        widget.order.pointsRedeemed! > 0) {
+      currentPointsValue =
+          widget.order.pointsRedeemed! * _rewardConfig!.conversionRate;
+
+      double maxByPercent =
+          (totalBeforePoints * _rewardConfig!.maxRewardUsagePercent) / 100;
+      double maxByFlat = _rewardConfig!.maxRewardUsageFlat;
+
+      double redeemableAmount = currentPointsValue;
+      if (redeemableAmount > maxByPercent) redeemableAmount = maxByPercent;
+      if (redeemableAmount > maxByFlat) redeemableAmount = maxByFlat;
+      if (redeemableAmount > totalBeforePoints)
+        redeemableAmount = totalBeforePoints;
+
+      if (redeemableAmount < currentPointsValue) {
+        pointsRefundValue = currentPointsValue - redeemableAmount;
+      }
+    }
+
+    // Final total calculation:
+    // Backend logic: order.total_amount = total_before_points - redeemable_amount
+    // Here we can just subtract the adjusted points value
+    double finalPointsDiscount = currentPointsValue - pointsRefundValue;
+    double total = totalBeforePoints - finalPointsDiscount;
     if (total < 0) total = 0;
 
     return Card(
@@ -160,8 +215,46 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
             _summaryRow('Subtotal', subtotal),
             _summaryRow('Delivery Fee', deliveryFee),
             _summaryRow('Additional Discount', -discount, color: Colors.green),
+            if (widget.order.pointsRedeemed != null &&
+                widget.order.pointsRedeemed! > 0)
+              _summaryRow(
+                'Points Discount',
+                -finalPointsDiscount,
+                color: Colors.green,
+              ),
+
             const Divider(),
             _summaryRow('Total Amount', total, isBold: true),
+
+            if (pointsRefundValue > 0) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Points worth ₹${pointsRefundValue.toStringAsFixed(2)} will be refunded to customer.',
+                        style: TextStyle(
+                          color: Colors.orange.shade800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -186,7 +279,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
             ),
           ),
           Text(
-            '₹${amount.toStringAsFixed(2)}',
+            '₹${amount.abs().toStringAsFixed(2)}', // Use abs for display if desired, or let negative sign show
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               color: color,
