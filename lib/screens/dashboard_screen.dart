@@ -5,6 +5,7 @@ import 'product_list_screen.dart';
 import 'order_list_screen.dart';
 import 'profile_screen.dart';
 import 'reward_settings_screen.dart';
+import 'retailer_customer_list_screen.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/order_provider.dart';
 import '../services/notification_service.dart';
@@ -94,6 +95,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: Text('Orders'),
               ),
               NavigationRailDestination(
+                icon: Icon(Icons.people),
+                label: Text('Customers'),
+              ),
+              NavigationRailDestination(
                 icon: Icon(Icons.loyalty),
                 label: Text('Rewards'),
               ),
@@ -120,8 +125,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 2:
         return const OrderListScreen();
       case 3:
-        return const RewardSettingsScreen();
+        return const RetailerCustomerListScreen();
       case 4:
+        return const RewardSettingsScreen();
+      case 5:
         return const ProfileScreen();
       default:
         return const Center(child: Text('Under Implementation'));
