@@ -15,13 +15,16 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
   final RewardService _rewardService = RewardService();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  RewardConfiguration? _config;
 
   final _cashbackController = TextEditingController();
   final _maxUsagePercentController = TextEditingController();
   final _maxUsageFlatController = TextEditingController();
   final _conversionRateController = TextEditingController();
+  final _referralRewardController = TextEditingController();
+  final _refereeRewardController = TextEditingController();
+  final _minReferralOrderController = TextEditingController();
   bool _isActive = true;
+  bool _isReferralEnabled = false;
 
   @override
   void initState() {
@@ -29,6 +32,8 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
     _fetchConfig();
   }
 
+  // Using _fetchData instead of _fetchConfig to avoid naming collision if any,
+  // but the code actually used _fetchConfig. Let's stick to what's there.
   Future<void> _fetchConfig() async {
     setState(() => _isLoading = true);
     try {
@@ -36,13 +41,18 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
       if (token != null) {
         final config = await _rewardService.getRewardConfiguration(token);
         setState(() {
-          _config = config;
           _cashbackController.text = config.cashbackPercentage.toString();
           _maxUsagePercentController.text = config.maxRewardUsagePercent
               .toString();
           _maxUsageFlatController.text = config.maxRewardUsageFlat.toString();
           _conversionRateController.text = config.conversionRate.toString();
+          _referralRewardController.text = config.referralRewardPoints
+              .toString();
+          _refereeRewardController.text = config.refereeRewardPoints.toString();
+          _minReferralOrderController.text = config.minReferralOrderAmount
+              .toString();
           _isActive = config.isActive;
+          _isReferralEnabled = config.isReferralEnabled;
         });
       }
     } catch (e) {
@@ -68,7 +78,13 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
           maxRewardUsagePercent: double.parse(_maxUsagePercentController.text),
           maxRewardUsageFlat: double.parse(_maxUsageFlatController.text),
           conversionRate: double.parse(_conversionRateController.text),
+          referralRewardPoints: double.parse(_referralRewardController.text),
+          refereeRewardPoints: double.parse(_refereeRewardController.text),
+          minReferralOrderAmount: double.parse(
+            _minReferralOrderController.text,
+          ),
           isActive: _isActive,
+          isReferralEnabled: _isReferralEnabled,
         );
 
         await _rewardService.updateRewardConfiguration(token, newConfig);
@@ -174,10 +190,77 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
+                    const Divider(),
+                    const Text(
+                      'Referral Program Settings',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Enable Referral Program'),
+                      value: _isReferralEnabled,
+                      onChanged: (val) =>
+                          setState(() => _isReferralEnabled = val),
+                    ),
+                    if (_isReferralEnabled) ...[
+                      TextFormField(
+                        controller: _referralRewardController,
+                        decoration: const InputDecoration(
+                          labelText: 'Referrer Reward Points',
+                          helperText: 'Points awarded to the person who refers',
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (double.tryParse(value) == null)
+                            return 'Invalid number';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _refereeRewardController,
+                        decoration: const InputDecoration(
+                          labelText: 'Referee Reward Points',
+                          helperText: 'Points awarded to the new customer',
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (double.tryParse(value) == null)
+                            return 'Invalid number';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _minReferralOrderController,
+                        decoration: const InputDecoration(
+                          labelText: 'Min Order Amount for Referral Reward',
+                          helperText:
+                              'Minimum first order value to trigger rewards',
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (double.tryParse(value) == null)
+                            return 'Invalid number';
+                          return null;
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 32),
                     ElevatedButton(
                       onPressed: _saveConfig,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
                       child: const Text('Save Settings'),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
