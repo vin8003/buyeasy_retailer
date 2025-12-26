@@ -49,6 +49,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _refreshData() {
     final auth = context.read<AuthProvider>();
+    debugPrint(
+      'DashboardScreen: _refreshData called. Token available: ${auth.token != null}',
+    );
     if (auth.token != null) {
       context.read<DashboardProvider>().fetchStats(auth.token!);
       context.read<OrderProvider>().fetchOrders(auth.token!);
@@ -223,9 +226,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 32),
+          _buildRecentReviews(dash),
         ],
       ),
     );
+  }
+
+  Widget _buildRecentReviews(DashboardProvider dash) {
+    final reviews = dash.stats?.recentReviews ?? [];
+    if (reviews.isEmpty && !dash.isLoading) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Recent Reviews', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        if (reviews.isEmpty && dash.isLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (reviews.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: Text('No reviews yet')),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: reviews.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final review = reviews[index];
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.amber.withOpacity(0.1),
+                    child: Text(
+                      '${review['rating']}',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Text(
+                        review['customer_name'] ?? 'Anonymous',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      Row(
+                        children: List.generate(5, (i) {
+                          return Icon(
+                            i < (review['rating'] ?? 0)
+                                ? Icons.star
+                                : Icons.star_border,
+                            size: 14,
+                            color: Colors.amber,
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                  subtitle: Text(review['comment'] ?? 'No comment'),
+                  trailing: Text(
+                    _formatReviewDate(review['created_at']),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  String _formatReviewDate(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   Widget _buildStatCard(

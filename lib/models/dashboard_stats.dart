@@ -12,6 +12,7 @@ class DashboardStats {
   final double averageRating;
   final List<dynamic> topCustomers;
   final List<dynamic> recentOrders;
+  final List<dynamic> recentReviews;
 
   DashboardStats({
     required this.totalOrders,
@@ -27,6 +28,7 @@ class DashboardStats {
     required this.averageRating,
     required this.topCustomers,
     required this.recentOrders,
+    required this.recentReviews,
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
@@ -44,8 +46,15 @@ class DashboardStats {
       ),
       totalProducts: json['total_products'] ?? 0,
       averageRating: double.parse(json['average_rating']?.toString() ?? '0'),
-      topCustomers: json['top_customers'] ?? [],
-      recentOrders: json['recent_orders'] ?? [],
+      topCustomers: (json['top_customers'] is List)
+          ? json['top_customers']
+          : [],
+      recentOrders: (json['recent_orders'] is List)
+          ? json['recent_orders']
+          : [],
+      recentReviews: (json['recent_reviews'] is List)
+          ? json['recent_reviews']
+          : [],
     );
   }
 }

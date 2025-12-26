@@ -16,7 +16,9 @@ class DashboardService {
     if (response.statusCode == 200) {
       return DashboardStats.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to load dashboard statistics');
+      throw Exception(
+        'Failed to load dashboard statistics: ${response.statusCode} - ${response.body}',
+      );
     }
   }
 }
