@@ -185,8 +185,9 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       double redeemableAmount = currentPointsValue;
       if (redeemableAmount > maxByPercent) redeemableAmount = maxByPercent;
       if (redeemableAmount > maxByFlat) redeemableAmount = maxByFlat;
-      if (redeemableAmount > totalBeforePoints)
+      if (redeemableAmount > totalBeforePoints) {
         redeemableAmount = totalBeforePoints;
+      }
 
       if (redeemableAmount < currentPointsValue) {
         pointsRefundValue = currentPointsValue - redeemableAmount;

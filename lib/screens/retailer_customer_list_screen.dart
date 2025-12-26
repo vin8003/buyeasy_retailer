@@ -94,7 +94,9 @@ class _RetailerCustomerListScreenState
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${double.parse(customer['points'].toString()).toStringAsFixed(2)}',
+                    double.parse(
+                      customer['points'].toString(),
+                    ).toStringAsFixed(2),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
