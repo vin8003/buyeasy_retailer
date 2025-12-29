@@ -59,6 +59,33 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> signup(Map<String, dynamic> signupData) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final data = await _authService.signup(signupData);
+      _token = data['tokens']['access']; // JWT access token
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', _token!);
+
+      // Register Device
+      try {
+        final fcmToken = await NotificationService().getToken();
+        if (fcmToken != null) {
+          await _authService.registerDevice(_token!, fcmToken);
+        }
+      } catch (e) {
+        debugPrint('Device registration error: $e');
+      }
+
+      await fetchProfile();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> verifyOtp(
     String phone, {
     String? otp,
@@ -105,5 +132,37 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     notifyListeners();
+  }
+
+  Future<void> forgotPassword(String phone) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _authService.forgotPassword(phone);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> resetPassword({
+    required String phone,
+    required String newPassword,
+    String? otp,
+    String? firebaseToken,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _authService.resetPassword(
+        phone: phone,
+        otp: otp,
+        firebaseToken: firebaseToken,
+        newPassword: newPassword,
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

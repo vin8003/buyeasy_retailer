@@ -18,6 +18,27 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> signup(Map<String, dynamic> data) async {
+    final response = await http.post(
+      Uri.parse('${ApiConstants.serverUrl}/api/auth/retailer/signup/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(
+        error['detail'] ??
+            error['username']?[0] ??
+            error['email']?[0] ??
+            error['non_field_errors']?[0] ??
+            'Failed to signup',
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> getProfile(String token) async {
     final response = await http.get(
       Uri.parse(ApiConstants.profile),
@@ -94,6 +115,51 @@ class AuthService {
     } else {
       final error = jsonDecode(response.body);
       throw Exception(error['error'] ?? 'Failed to verify OTP');
+    }
+  }
+
+  Future<void> forgotPassword(String phone) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.forgotPassword),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone_number': phone}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(
+        error['error'] ?? error['phone_number']?[0] ?? 'Failed to send OTP',
+      );
+    }
+  }
+
+  Future<void> resetPassword({
+    required String phone,
+    required String newPassword,
+    String? otp,
+    String? firebaseToken,
+  }) async {
+    final data = <String, dynamic>{
+      'phone_number': phone,
+      'new_password': newPassword,
+      'confirm_password': newPassword,
+    };
+    if (otp != null) data['otp_code'] = otp;
+    if (firebaseToken != null) data['firebase_token'] = firebaseToken;
+
+    final response = await http.post(
+      Uri.parse(ApiConstants.resetPassword),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(
+        error['error'] ??
+            error['new_password']?[0] ??
+            'Failed to reset password',
+      );
     }
   }
 }

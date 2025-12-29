@@ -29,6 +29,8 @@ class ApiConstants {
   static String get profile => '$baseUrl/auth/profile/';
   static String get registerDevice => '$baseUrl/auth/device/register/';
   static String get verifyOtp => '$baseUrl/auth/customer/verify-otp/';
+  static String get forgotPassword => '$baseUrl/auth/password/forgot/';
+  static String get resetPassword => '$baseUrl/auth/password/reset/';
 
   // Product endpoints
   static String get products => '$baseUrl/products/';
