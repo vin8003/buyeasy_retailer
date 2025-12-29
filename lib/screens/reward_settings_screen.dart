@@ -215,8 +215,9 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Required';
-                          if (double.tryParse(value) == null)
+                          if (double.tryParse(value) == null) {
                             return 'Invalid number';
+                          }
                           return null;
                         },
                       ),
@@ -230,8 +231,9 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Required';
-                          if (double.tryParse(value) == null)
+                          if (double.tryParse(value) == null) {
                             return 'Invalid number';
+                          }
                           return null;
                         },
                       ),
@@ -246,8 +248,9 @@ class _RewardSettingsScreenState extends State<RewardSettingsScreen> {
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Required';
-                          if (double.tryParse(value) == null)
+                          if (double.tryParse(value) == null) {
                             return 'Invalid number';
+                          }
                           return null;
                         },
                       ),

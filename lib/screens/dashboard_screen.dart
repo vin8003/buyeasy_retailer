@@ -275,9 +275,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   title: Row(
                     children: [
-                      Text(
-                        review['customer_name'] ?? 'Anonymous',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      Expanded(
+                        child: Text(
+                          review['customer_name'] ?? 'Anonymous',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Row(

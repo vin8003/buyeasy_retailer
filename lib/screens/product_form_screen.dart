@@ -21,8 +21,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late TextEditingController _originalPriceController;
   late TextEditingController _quantityController;
   late TextEditingController _unitController;
+  final TextEditingController _barcodeController =
+      TextEditingController(); // NEW
   int? _selectedCategoryId;
   int? _selectedBrandId;
+  int? _masterProductId; // NEW
   bool _isFeatured = false;
   bool _isAvailable = true;
 
@@ -84,7 +87,66 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _originalPriceController.dispose();
     _quantityController.dispose();
     _unitController.dispose();
+    _barcodeController.dispose(); // NEW
     super.dispose();
+  }
+
+  void _searchBarcode() async {
+    final barcode = _barcodeController.text.trim();
+    if (barcode.isEmpty) return;
+
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null) return;
+
+    try {
+      final data = await context.read<ProductProvider>().searchMasterProduct(
+        auth.token!,
+        barcode,
+      );
+
+      setState(() {
+        _masterProductId = data['id'];
+        _nameController.text = data['name'];
+        _descriptionController.text = data['description'] ?? '';
+
+        // Handle MRP
+        if (data['mrp'] != null) {
+          _priceController.text = data['mrp'].toString();
+          _originalPriceController.text = data['mrp'].toString();
+        }
+
+        // Try to match Category
+        final provider = context.read<ProductProvider>();
+        if (data['category_name'] != null) {
+          try {
+            _selectedCategoryId = provider.categories.firstWhere(
+              (c) => c['name'] == data['category_name'],
+            )['id'];
+          } catch (_) {}
+        }
+
+        // Try to match Brand
+        if (data['brand_name'] != null) {
+          try {
+            _selectedBrandId = provider.brands.firstWhere(
+              (b) => b['name'] == data['brand_name'],
+            )['id'];
+          } catch (_) {}
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Product found!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
   }
 
   void _saveForm() async {
@@ -108,6 +170,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       'is_featured': _isFeatured,
       'is_available': _isAvailable,
       'is_active': true,
+      'barcode': _barcodeController.text.isNotEmpty
+          ? _barcodeController.text
+          : null, // NEW
+      'master_product': _masterProductId, // NEW
     };
 
     try {
@@ -155,6 +221,37 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (!isEditing) ...[
+                      // Only show search for new products
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _barcodeController,
+                              decoration: const InputDecoration(
+                                labelText: 'Barcode / EAN (Optional)',
+                                hintText: 'Scan or enter barcode',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: provider.isLoading
+                                ? null
+                                : _searchBarcode,
+                            icon: const Icon(Icons.search),
+                            tooltip: 'Search in Master Catalog',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                    ],
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(

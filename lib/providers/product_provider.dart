@@ -46,6 +46,25 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> searchMasterProduct(
+    String token,
+    String barcode,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final result = await _productService.searchMasterProduct(token, barcode);
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> addProduct(
     String token,
     Map<String, dynamic> productData,

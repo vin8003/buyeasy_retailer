@@ -112,6 +112,27 @@ class ProductService {
     }
   }
 
+  Future<Map<String, dynamic>> searchMasterProduct(
+    String token,
+    String barcode,
+  ) async {
+    final response = await http.get(
+      Uri.parse('${ApiConstants.masterProductSearch}?barcode=$barcode'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      throw Exception('Product not found in master catalog');
+    } else {
+      throw Exception('Failed to search product');
+    }
+  }
+
   Future<Map<String, dynamic>> uploadProducts(String token, File file) async {
     var request = http.MultipartRequest(
       'POST',

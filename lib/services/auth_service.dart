@@ -34,6 +34,27 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> updateProfile(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.put(
+      Uri.parse('${ApiConstants.serverUrl}/api/retailer/profile/update/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to update profile');
+    }
+  }
+
   Future<void> registerDevice(String token, String fcmToken) async {
     final response = await http.post(
       Uri.parse(ApiConstants.registerDevice),

@@ -92,6 +92,13 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    if (_token == null) return;
+    final updatedData = await _authService.updateProfile(_token!, data);
+    _user = UserModel.fromJson(updatedData);
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     _token = null;
     _user = null;

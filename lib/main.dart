@@ -12,10 +12,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'utils/constants.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await ApiConstants.loadServerUrl();
 
   try {
     if (kIsWeb) {
