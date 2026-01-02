@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
-import 'dart:typed_data';
-import 'dart:io';
-// Conditional import for web download
-import 'dart:html' as html if (dart.library.io) 'dart:io'; 
 import '../services/product_service.dart';
 import '../providers/auth_provider.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BulkUploadScreen extends StatefulWidget {
@@ -24,6 +18,10 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
   XFile? _selectedFile;
   bool _isLoading = false;
   String? _uploadError;
+
+  // New state variables for 2-step flow
+  int _currentStep = 0; // 0: Check, 1: Complete
+  Map<String, dynamic>? _checkResult;
 
   Future<void> _pickFile() async {
     try {
@@ -45,7 +43,16 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
     }
   }
 
-  Future<void> _uploadFile() async {
+  void _reset() {
+    setState(() {
+      _currentStep = 0;
+      _selectedFile = null;
+      _checkResult = null;
+      _uploadError = null;
+    });
+  }
+
+  Future<void> _processUpload() async {
     if (_selectedFile == null) return;
 
     final token = context.read<AuthProvider>().token;
@@ -57,16 +64,26 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
     });
 
     try {
-      final result = await _productService.uploadProducts(
-        token,
-        _selectedFile!,
-      );
-
-      if (mounted) {
-        _showResultDialog(result);
+      if (_currentStep == 0) {
+        // Step 1: Check
+        final result = await _productService.checkBulkUpload(
+          token,
+          _selectedFile!,
+        );
         setState(() {
-          _selectedFile = null; // Clear selection on success
+          _checkResult = result;
+          // Clean up file selection after check
+          _selectedFile = null;
         });
+      } else {
+        // Step 2: Complete
+        final result = await _productService.completeBulkUpload(
+          token,
+          _selectedFile!,
+        );
+        if (mounted) {
+          _showFinalSuccessDialog(result);
+        }
       }
     } catch (e) {
       setState(() {
@@ -81,125 +98,237 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
     }
   }
 
-  void _showResultDialog(Map<String, dynamic> result) {
-    // result keys: message, total_rows, successful_rows, failed_rows, error_log (list)
+  void _showFinalSuccessDialog(Map<String, dynamic> result) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Upload Complete'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(result['message'] ?? 'Upload processed'),
-              const SizedBox(height: 16),
-              _buildStat('Total Rows:', result['total_rows']),
-              _buildStat(
-                'Successful:',
-                result['successful_rows'],
-                color: Colors.green,
-              ),
-              _buildStat('Failed:', result['failed_rows'], color: Colors.red),
-
-              if (result['error_log'] != null &&
-                  (result['error_log'] as List).isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Errors:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 150,
-                  width: double.maxFinite,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: (result['error_log'] as List).length,
-                    itemBuilder: (context, index) {
-                      final error = (result['error_log'] as List)[index];
-                      return ListTile(
-                        title: Text('Row ${error['row']}'),
-                        subtitle: Text(error['error']),
-                        dense: true,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ],
-          ),
+        title: const Text('Upload Completed'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(result['message'] ?? 'Products added successfully'),
+            const SizedBox(height: 10),
+            Text('Success: ${result['success_count']}'),
+            Text('Failed: ${result['failed_count']}'),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              _reset(); // Reset screen
+            },
+            child: const Text('New Upload'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(ctx); // Close screen
+            },
+            child: const Text('Done'),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _downloadTemplate() async {
-    final token = context.read<AuthProvider>().token;
-    if (token == null) return;
-
-    setState(() {
-      _isLoading = true;
-      _uploadError = null;
-    });
-
+  Future<void> _downloadFile(String url, String filename) async {
     try {
-      final bytes = await _productService.downloadTemplate(token);
-      
-      if (kIsWeb) {
-        // Web download logic
-        final blob = html.Blob([bytes]);
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute("download", "product_upload_template.xlsx")
-          ..click();
-        html.Url.revokeObjectUrl(url);
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        // Mobile/Desktop saving logic (simplified)
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/product_upload_template.xlsx';
-        final file = File(filePath);
-        await file.writeAsBytes(bytes);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Template saved to: $filePath')),
-          );
-        }
+        throw 'Could not launch $url';
       }
     } catch (e) {
-      setState(() {
-        _uploadError = 'Download failed: $e';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error downloading file: $e')));
     }
+  }
+
+  Widget _buildStep1Check() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Step 1: Check & Match',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Upload your product list (CSV/Excel) to check against our Master Catalog.\n'
+          'Matches will be added automatically.',
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 24),
+        _buildFilePicker(),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _selectedFile == null || _isLoading
+                ? null
+                : _processUpload,
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Check Products'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep2Review() {
+    if (_checkResult == null) return const SizedBox.shrink();
+
+    final matchedCount = _checkResult!['matched_count'] ?? 0;
+    final unmatchedCount = _checkResult!['unmatched_count'] ?? 0;
+    final matchedUrl = _checkResult!['matched_file_url'];
+    final unmatchedUrl = _checkResult!['unmatched_file_url'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Step 2: Review Results',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Column(
+            children: [
+              _buildStat(
+                'Matched Products (Added):',
+                matchedCount,
+                color: Colors.green,
+              ),
+              if (matchedCount > 0 && matchedUrl != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _downloadFile(matchedUrl, 'matched.xlsx'),
+                    icon: const Icon(Icons.download, size: 16),
+                    label: const Text('Download Report'),
+                  ),
+                ),
+              const Divider(),
+              _buildStat(
+                'Unmatched Products:',
+                unmatchedCount,
+                color: Colors.orange,
+              ),
+              if (unmatchedCount > 0 && unmatchedUrl != null) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'These products were not found in the Master Catalog.\n'
+                  'Download the template below, fill in the details, and upload it to complete the process.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      _downloadFile(unmatchedUrl, 'unmatched_template.xlsx'),
+                  icon: const Icon(Icons.download),
+                  label: const Text('Download Unmatched Template'),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        if (unmatchedCount > 0) ...[
+          const Text(
+            'Upload Filled Template (Unmatched)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          _buildFilePicker(label: 'Select Filled Template'),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _selectedFile == null || _isLoading
+                  ? null
+                  : () {
+                      setState(() {
+                        _currentStep = 1;
+                      });
+                      _processUpload();
+                    },
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Complete Upload'),
+            ),
+          ),
+        ] else ...[
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _reset,
+              child: const Text('Start New Upload'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFilePicker({String label = 'Select File'}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey.shade50,
+      ),
+      child: Column(
+        children: [
+          Icon(
+            _selectedFile == null ? Icons.upload_file : Icons.description,
+            size: 48,
+            color: Colors.blue,
+          ),
+          const SizedBox(height: 16),
+          if (_selectedFile != null) ...[
+            Text(
+              _selectedFile!.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextButton(onPressed: _pickFile, child: const Text('Change File')),
+          ] else
+            ElevatedButton(onPressed: _pickFile, child: Text(label)),
+        ],
+      ),
+    );
   }
 
   Widget _buildStat(String label, dynamic value, {Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          const SizedBox(width: 8),
           Text(
             value.toString(),
-            style: TextStyle(fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -209,75 +338,23 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bulk Product Upload')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Bulk Product Upload'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _reset,
+            tooltip: 'Reset',
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Upload Products via CSV/Excel',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                TextButton.icon(
-                  onPressed: _isLoading ? null : _downloadTemplate,
-                  icon: const Icon(Icons.download),
-                  label: const Text('Download Template'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Supported formats: .csv, .xlsx\nRequired columns: name, price, quantity\nOptional columns: barcode, category, brand, description, image, unit',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 32),
-
-            // File Selection Area
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey.shade50,
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    _selectedFile == null
-                        ? Icons.upload_file
-                        : Icons.description,
-                    size: 48,
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(height: 16),
-                  if (_selectedFile != null) ...[
-                    Text(
-                      _selectedFile!.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _pickFile,
-                      child: const Text('Change File'),
-                    ),
-                  ] else
-                    ElevatedButton(
-                      onPressed: _pickFile,
-                      child: const Text('Select File'),
-                    ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
             if (_uploadError != null)
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
@@ -285,43 +362,16 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
                   border: Border.all(color: Colors.red.shade200),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _uploadError!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  _uploadError!,
+                  style: const TextStyle(color: Colors.red),
                 ),
               ),
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _selectedFile == null || _isLoading
-                    ? null
-                    : _uploadFile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text('Upload Products'),
-              ),
-            ),
+            if (_checkResult == null)
+              _buildStep1Check()
+            else
+              _buildStep2Review(),
           ],
         ),
       ),

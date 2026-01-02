@@ -316,6 +316,14 @@ class ApiService {
     );
   }
 
+  Future<Response> checkBulkUpload(FormData formData) {
+    return _dio.post('products/upload/check/', data: formData);
+  }
+
+  Future<Response> completeBulkUpload(FormData formData) {
+    return _dio.post('products/upload/complete/', data: formData);
+  }
+
   // --- Order Methods ---
   Future<Response> getOrders() {
     return _dio.get('orders/');

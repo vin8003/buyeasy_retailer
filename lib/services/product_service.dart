@@ -239,6 +239,66 @@ class ProductService {
     }
   }
 
+  Future<Map<String, dynamic>> checkBulkUpload(String token, XFile file) async {
+    // Uses Dio via ApiService in real implementation, but here we are using http directly in ProductService
+    // We should ideally refactor ProductService to use ApiService, but for now we follow the existing pattern
+    // or delegate to ApiService if we can get an instance or make it static.
+
+    // Changing approach: creating the multipart request directly here to match existing style
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConstants.uploadProducts}check/'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        await file.readAsBytes(),
+        filename: file.name,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to check products');
+    }
+  }
+
+  Future<Map<String, dynamic>> completeBulkUpload(
+    String token,
+    XFile file,
+  ) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConstants.uploadProducts}complete/'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        await file.readAsBytes(),
+        filename: file.name,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to complete upload');
+    }
+  }
+
   Future<Uint8List> downloadTemplate(String token) async {
     final response = await http.get(
       Uri.parse(ApiConstants.downloadTemplate),
