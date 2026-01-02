@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../utils/constants.dart';
 import '../models/product_model.dart';
+import '../models/upload_session.dart';
 
 class ProductService {
   Future<List<Product>> getProducts(String token) async {
@@ -309,6 +310,83 @@ class ProductService {
       return response.bodyBytes;
     } else {
       throw Exception('Failed to download template');
+    }
+  }
+
+  Future<List<ProductUploadSession>> getActiveSessions(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConstants.getActiveSessions),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => ProductUploadSession.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load sessions');
+    }
+  }
+
+  Future<Map<String, dynamic>> getSessionDetails(
+    String token,
+    int sessionId,
+  ) async {
+    final response = await http.get(
+      Uri.parse(ApiConstants.getSessionDetails(sessionId)),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load session details');
+    }
+  }
+
+  Future<void> updateSessionItems(
+    String token,
+    int sessionId,
+    List<Map<String, dynamic>> items,
+  ) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.updateSessionItems),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'session_id': sessionId, 'items': items}),
+    );
+
+    if (response.statusCode != 200) {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to update items');
+    }
+  }
+
+  Future<Map<String, dynamic>> commitSession(
+    String token,
+    int sessionId,
+  ) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.commitSession),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'session_id': sessionId}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to commit session');
     }
   }
 }

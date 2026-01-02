@@ -44,6 +44,15 @@ class ApiConstants {
   static String get masterProductSearch => '$baseUrl/products/master/search/';
   static String get downloadTemplate => '$baseUrl/products/bulk-template/';
 
+  // Visual Bulk Upload
+  static String get getActiveSessions =>
+      '$baseUrl/products/upload/session/active/';
+  static String getSessionDetails(int id) =>
+      '$baseUrl/products/upload/session/$id/';
+  static String get updateSessionItems =>
+      '$baseUrl/products/upload/session/update-items/';
+  static String get commitSession => '$baseUrl/products/upload/session/commit/';
+
   // Order endpoints
   static String get orders => '$baseUrl/orders/';
   static String get currentOrders => '$baseUrl/orders/current/';
