@@ -7,9 +7,11 @@ import 'providers/product_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
+import 'services/api_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'utils/constants.dart';
@@ -18,6 +20,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await ApiConstants.loadServerUrl();
+
+  // Initialize ApiService early to load saved base URL
+  await ApiService().checkAuthToken();
 
   try {
     if (kIsWeb) {
@@ -62,12 +67,20 @@ class RetailerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // Connect ApiService's navigatorKey for global navigation (e.g., forced logout)
+      navigatorKey: ApiService().navigatorKey,
       title: 'Shopeasy Retailer Dashboard',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme(),
       ),
+      // Define routes for navigation from ApiService
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignupScreen(),
+        '/dashboard': (context) => const DashboardScreen(),
+      },
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (auth.isAuthenticated) {
