@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
 import '../providers/auth_provider.dart';
@@ -199,11 +200,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: item.productImage != null
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              item.productImage!.startsWith('http')
+                            child: CachedNetworkImage(
+                              imageUrl: item.productImage!.startsWith('http')
                                   ? item.productImage!
                                   : '${ApiConstants.serverUrl}${item.productImage!}',
                               fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(color: Colors.grey[200]),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.broken_image),
                             ),
                           )
                         : const Icon(Icons.shopping_bag, color: Colors.grey),

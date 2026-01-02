@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/product_model.dart';
@@ -94,12 +95,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(4),
                               child: product.image != null
-                                  ? Image.network(
-                                      '${ApiConstants.serverUrl}${product.image}',
+                                  ? CachedNetworkImage(
+                                      imageUrl:
+                                          '${ApiConstants.serverUrl}${product.image}',
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,
-                                      errorBuilder:
+                                      placeholder: (context, url) => Container(
+                                        width: 50,
+                                        height: 50,
+                                        color: Colors.grey[200],
+                                      ),
+                                      errorWidget:
                                           (context, error, stackTrace) =>
                                               Container(
                                                 width: 50,
