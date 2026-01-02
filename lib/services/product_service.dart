@@ -168,9 +168,17 @@ class ProductService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getBrands(String token) async {
+  Future<List<Map<String, dynamic>>> getBrands(
+    String token, {
+    String? query,
+  }) async {
+    var url = ApiConstants.brands;
+    if (query != null && query.isNotEmpty) {
+      url += '?search=$query';
+    }
+
     final response = await http.get(
-      Uri.parse(ApiConstants.brands),
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

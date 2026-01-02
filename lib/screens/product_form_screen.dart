@@ -424,17 +424,116 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           setState(() => _selectedCategoryId = val),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      initialValue: _selectedBrandId,
-                      decoration: const InputDecoration(labelText: 'Brand'),
-                      items: provider.brands.map((b) {
-                        return DropdownMenuItem<int>(
-                          value: b['id'],
-                          child: Text(b['name']),
+                    const SizedBox(height: 16),
+                    // Brand Autocomplete
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Autocomplete<Map<String, dynamic>>(
+                          optionsBuilder:
+                              (TextEditingValue textEditingValue) async {
+                                if (textEditingValue.text.isEmpty) {
+                                  return const Iterable<
+                                    Map<String, dynamic>
+                                  >.empty();
+                                }
+                                final token = context
+                                    .read<AuthProvider>()
+                                    .token;
+                                if (token == null) {
+                                  return const Iterable<
+                                    Map<String, dynamic>
+                                  >.empty();
+                                }
+                                try {
+                                  return await provider.searchBrands(
+                                    token,
+                                    textEditingValue.text,
+                                  );
+                                } catch (e) {
+                                  return const Iterable<
+                                    Map<String, dynamic>
+                                  >.empty();
+                                }
+                              },
+                          displayStringForOption:
+                              (Map<String, dynamic> option) => option['name'],
+                          onSelected: (Map<String, dynamic> selection) {
+                            setState(() {
+                              _selectedBrandId = selection['id'];
+                            });
+                          },
+                          fieldViewBuilder:
+                              (
+                                BuildContext context,
+                                TextEditingController
+                                fieldTextEditingController,
+                                FocusNode fieldFocusNode,
+                                VoidCallback onFieldSubmitted,
+                              ) {
+                                // Pre-fill if editing
+                                if (_selectedBrandId != null &&
+                                    fieldTextEditingController.text.isEmpty) {
+                                  final brand = provider.brands.firstWhere(
+                                    (b) => b['id'] == _selectedBrandId,
+                                    orElse: () => {'name': ''},
+                                  );
+                                  if (brand['name'].isNotEmpty) {
+                                    fieldTextEditingController.text =
+                                        brand['name'];
+                                  }
+                                }
+
+                                return TextFormField(
+                                  controller: fieldTextEditingController,
+                                  focusNode: fieldFocusNode,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Brand (Search to select)',
+                                    helperText: 'Start typing to search brands',
+                                  ),
+                                  validator: (value) {
+                                    if (_selectedBrandId == null &&
+                                        (value != null && value.isNotEmpty)) {
+                                      return 'Please select a valid brand from the list';
+                                    }
+                                    return null;
+                                  },
+                                );
+                              },
+                          optionsViewBuilder:
+                              (
+                                BuildContext context,
+                                AutocompleteOnSelected<Map<String, dynamic>>
+                                onSelected,
+                                Iterable<Map<String, dynamic>> options,
+                              ) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    elevation: 4.0,
+                                    child: SizedBox(
+                                      width: constraints.maxWidth,
+                                      height: 200,
+                                      child: ListView.builder(
+                                        padding: const EdgeInsets.all(8.0),
+                                        itemCount: options.length,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
+                                              final Map<String, dynamic>
+                                              option = options.elementAt(index);
+                                              return ListTile(
+                                                title: Text(option['name']),
+                                                onTap: () {
+                                                  onSelected(option);
+                                                },
+                                              );
+                                            },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                         );
-                      }).toList(),
-                      onChanged: (val) =>
-                          setState(() => _selectedBrandId = val),
+                      },
                     ),
                     const SizedBox(height: 16),
                     SwitchListTile(

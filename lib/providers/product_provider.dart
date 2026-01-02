@@ -37,6 +37,7 @@ class ProductProvider with ChangeNotifier {
     try {
       final results = await Future.wait([
         _productService.getCategories(token),
+        // Load initial batch of brands (defaults to top 100/popular from backend)
         _productService.getBrands(token),
       ]);
       _categories = results[0];
@@ -44,6 +45,18 @@ class ProductProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching metadata: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> searchBrands(
+    String token,
+    String query,
+  ) async {
+    try {
+      return await _productService.getBrands(token, query: query);
+    } catch (e) {
+      debugPrint('Error searching brands: $e');
+      rethrow;
     }
   }
 
