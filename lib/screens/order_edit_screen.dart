@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
 import '../services/order_service.dart';
@@ -378,14 +379,16 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (item.productImage != null)
-                  Image.network(
-                    item.productImage!.startsWith('http')
+                  CachedNetworkImage(
+                    imageUrl: item.productImage!.startsWith('http')
                         ? item.productImage!
                         : '${ApiConstants.serverUrl}${item.productImage!}',
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                    placeholder: (context, url) =>
+                        Container(color: Colors.grey[200]),
+                    errorWidget: (context, url, error) =>
                         const Icon(Icons.broken_image, size: 60),
                   )
                 else

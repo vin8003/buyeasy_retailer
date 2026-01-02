@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 import '../utils/constants.dart';
 import 'forgot_password_screen.dart';
@@ -71,7 +72,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await ApiConstants.setServerUrl(controller.text.trim());
+              final url = controller.text.trim();
+              await ApiConstants.setServerUrl(url);
+              await ApiService().setBaseUrl(url);
               if (mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
