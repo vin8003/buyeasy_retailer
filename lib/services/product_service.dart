@@ -1,6 +1,7 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../utils/constants.dart';
 import '../models/product_model.dart';
 
@@ -25,44 +26,115 @@ class ProductService {
 
   Future<Product> addProduct(
     String token,
-    Map<String, dynamic> productData,
-  ) async {
-    final response = await http.post(
-      Uri.parse(ApiConstants.createProduct),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(productData),
-    );
+    Map<String, dynamic> productData, {
+    XFile? imageFile,
+  }) async {
+    if (imageFile == null) {
+      final response = await http.post(
+        Uri.parse(ApiConstants.createProduct),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(productData),
+      );
 
-    if (response.statusCode == 201) {
-      return Product.fromJson(jsonDecode(response.body));
+      if (response.statusCode == 201) {
+        return Product.fromJson(jsonDecode(response.body));
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to add product');
+      }
     } else {
-      final errorData = jsonDecode(response.body);
-      throw Exception(errorData['error'] ?? 'Failed to add product');
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiConstants.createProduct),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add fields
+      productData.forEach((key, value) {
+        if (value != null) {
+          request.fields[key] = value.toString();
+        }
+      });
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          await imageFile.readAsBytes(),
+          filename: imageFile.name,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        return Product.fromJson(jsonDecode(response.body));
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to add product');
+      }
     }
   }
 
   Future<Product> updateProduct(
     String token,
     int productId,
-    Map<String, dynamic> productData,
-  ) async {
-    final response = await http.patch(
-      Uri.parse(ApiConstants.updateProduct(productId)),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(productData),
-    );
+    Map<String, dynamic> productData, {
+    XFile? imageFile,
+  }) async {
+    if (imageFile == null) {
+      final response = await http.patch(
+        Uri.parse(ApiConstants.updateProduct(productId)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(productData),
+      );
 
-    if (response.statusCode == 200) {
-      return Product.fromJson(jsonDecode(response.body));
+      if (response.statusCode == 200) {
+        return Product.fromJson(jsonDecode(response.body));
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update product');
+      }
     } else {
-      final errorData = jsonDecode(response.body);
-      throw Exception(errorData['error'] ?? 'Failed to update product');
+      var request = http.MultipartRequest(
+        'PATCH',
+        Uri.parse(ApiConstants.updateProduct(productId)),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add fields
+      productData.forEach((key, value) {
+        if (value != null) {
+          request.fields[key] = value.toString();
+        }
+      });
+
+      // Add image
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          await imageFile.readAsBytes(),
+          filename: imageFile.name,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return Product.fromJson(jsonDecode(response.body));
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update product');
+      }
     }
   }
 
@@ -133,14 +205,20 @@ class ProductService {
     }
   }
 
-  Future<Map<String, dynamic>> uploadProducts(String token, File file) async {
+  Future<Map<String, dynamic>> uploadProducts(String token, XFile file) async {
     var request = http.MultipartRequest(
       'POST',
       Uri.parse(ApiConstants.uploadProducts),
     );
 
     request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        await file.readAsBytes(),
+        filename: file.name,
+      ),
+    );
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
@@ -150,6 +228,19 @@ class ProductService {
     } else {
       final errorData = jsonDecode(response.body);
       throw Exception(errorData['error'] ?? 'Failed to upload products');
+    }
+  }
+
+  Future<Uint8List> downloadTemplate(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConstants.downloadTemplate),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else {
+      throw Exception('Failed to download template');
     }
   }
 }

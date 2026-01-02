@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProductProvider with ChangeNotifier {
   final ProductService _productService = ProductService();
@@ -67,13 +68,18 @@ class ProductProvider with ChangeNotifier {
 
   Future<void> addProduct(
     String token,
-    Map<String, dynamic> productData,
-  ) async {
+    Map<String, dynamic> productData, {
+    XFile? imageFile,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     try {
-      final newProduct = await _productService.addProduct(token, productData);
+      final newProduct = await _productService.addProduct(
+        token,
+        productData,
+        imageFile: imageFile,
+      );
       _products.insert(0, newProduct);
     } catch (e) {
       _error = e.toString();
@@ -87,8 +93,9 @@ class ProductProvider with ChangeNotifier {
   Future<void> updateProduct(
     String token,
     int productId,
-    Map<String, dynamic> productData,
-  ) async {
+    Map<String, dynamic> productData, {
+    XFile? imageFile,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -97,6 +104,7 @@ class ProductProvider with ChangeNotifier {
         token,
         productId,
         productData,
+        imageFile: imageFile,
       );
       final index = _products.indexWhere((p) => p.id == productId);
       if (index != -1) {

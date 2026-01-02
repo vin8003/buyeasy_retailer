@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../utils/constants.dart';
 import '../models/product_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
@@ -28,6 +32,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   int? _masterProductId; // NEW
   bool _isFeatured = false;
   bool _isAvailable = true;
+  XFile? _imageFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -149,6 +155,31 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
   }
 
+  String _getProductImageUrl() {
+    if (widget.product?.imageUrl != null &&
+        widget.product!.imageUrl!.isNotEmpty) {
+      return widget.product!.imageUrl!;
+    }
+    if (widget.product?.image != null && widget.product!.image!.isNotEmpty) {
+      if (widget.product!.image!.startsWith('http')) {
+        return widget.product!.image!;
+      }
+      return '${ApiConstants.serverUrl}${widget.product!.image!}';
+    }
+    return '';
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = pickedFile;
+      });
+    }
+  }
+
   void _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -178,12 +209,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     try {
       if (widget.product == null) {
-        await provider.addProduct(auth.token!, productData);
+        await provider.addProduct(
+          auth.token!,
+          productData,
+          imageFile: _imageFile,
+        );
       } else {
         await provider.updateProduct(
           auth.token!,
           widget.product!.id,
           productData,
+          imageFile: _imageFile,
         );
       }
       if (mounted) {
@@ -248,10 +284,63 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 16),
                     ],
+                    const SizedBox(height: 16),
+                    // Image Picker Widget
+                    Center(
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[400]!),
+                            image: _imageFile != null
+                                ? DecorationImage(
+                                    image: kIsWeb
+                                        ? NetworkImage(_imageFile!.path)
+                                        : FileImage(File(_imageFile!.path))
+                                              as ImageProvider,
+                                    fit: BoxFit.cover,
+                                  )
+                                : (widget.product?.image != null ||
+                                          widget.product?.imageUrl != null
+                                      ? DecorationImage(
+                                          image: NetworkImage(
+                                            _getProductImageUrl(),
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null),
+                          ),
+                          child:
+                              _imageFile == null &&
+                                  widget.product?.image == null &&
+                                  widget.product?.imageUrl == null
+                              ? const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_a_photo,
+                                      size: 40,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Add Photo',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -323,7 +412,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
-                      initialValue: _selectedCategoryId,
+                      value: _selectedCategoryId,
                       decoration: const InputDecoration(labelText: 'Category'),
                       items: provider.categories.map((c) {
                         return DropdownMenuItem<int>(

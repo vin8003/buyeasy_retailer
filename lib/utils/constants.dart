@@ -42,6 +42,7 @@ class ApiConstants {
   static String updateProduct(int id) => '$baseUrl/products/$id/update/';
   static String deleteProduct(int id) => '$baseUrl/products/$id/delete/';
   static String get masterProductSearch => '$baseUrl/products/master/search/';
+  static String get downloadTemplate => '$baseUrl/products/bulk-template/';
 
   // Order endpoints
   static String get orders => '$baseUrl/orders/';
