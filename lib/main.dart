@@ -69,7 +69,7 @@ class RetailerApp extends StatelessWidget {
     return MaterialApp(
       // Connect ApiService's navigatorKey for global navigation (e.g., forced logout)
       navigatorKey: ApiService().navigatorKey,
-      title: 'Shopeasy Retailer Dashboard',
+      title: 'Order Easy Retailer Dashboard',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
