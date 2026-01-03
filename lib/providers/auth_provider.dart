@@ -107,6 +107,17 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> requestPhoneVerification() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _apiService.requestPhoneVerification();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> verifyOtp(
     String phone, {
     String? otp,

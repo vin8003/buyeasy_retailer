@@ -81,8 +81,8 @@ class ApiService {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          // Handle both 401 (Unauthorized) and 403 (token_not_valid) errors
-          if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+          // Handle 401 (Unauthorized) errors
+          if (e.response?.statusCode == 401) {
             // Check if it's a refresh token failure or if we don't have a refresh token
             if (_refreshToken == null ||
                 e.requestOptions.path.contains('/auth/token/refresh/')) {
@@ -359,6 +359,10 @@ class ApiService {
   }
 
   // --- OTP/Password Methods ---
+  Future<Response> requestPhoneVerification() {
+    return _dio.post('auth/customer/request-verification/');
+  }
+
   Future<Response> verifyOtp(
     String phone, {
     String? otp,
