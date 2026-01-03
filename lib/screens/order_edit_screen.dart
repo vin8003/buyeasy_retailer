@@ -7,6 +7,7 @@ import '../services/reward_service.dart';
 import '../models/reward_configuration.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
+import 'product_selection_screen.dart';
 
 class OrderEditScreen extends StatefulWidget {
   final OrderModel order;
@@ -37,7 +38,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     _discountController = TextEditingController(
       text: widget.order.discountAmount?.toString() ?? '0',
     );
-    // Initialize trackers
+    // Initialize trackers for existing items
     for (var item in _items) {
       _quantityChanges[item.id] = item.quantity;
       _priceChanges[item.id] = item.unitPrice;
@@ -84,15 +85,30 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       List<Map<String, dynamic>> itemsPayload = [];
 
       for (var item in _items) {
-        int newQty = _quantityChanges[item.id]!;
-        double newPrice = _priceChanges[item.id]!;
+        // Skip items that are marked for removal (quantity 0) IF they are new items.
+        // For existing items (id > 0), simple quantity=0 update deletes them on backend.
+        // For new items (id < 0), if quantity is 0, just don't send them.
 
-        // Sending all with current values
-        itemsPayload.add({
-          'id': item.id,
-          'quantity': newQty,
-          'unit_price': newPrice,
-        });
+        int qty = _quantityChanges[item.id] ?? item.quantity;
+        double price = _priceChanges[item.id] ?? item.unitPrice;
+
+        if (item.id < 0 && qty == 0) continue;
+
+        if (item.id < 0) {
+          // New item
+          itemsPayload.add({
+            'product_id': item.productId,
+            'quantity': qty,
+            // 'unit_price': price, // Price for new items usually taken from product, but if we want to support custom price for new items, backend needs update. For now serializer uses product.price but we can override if backend supports it. Checked serializer: it uses product.price. Adding unit_price support would be next step.
+          });
+        } else {
+          // Existing item
+          itemsPayload.add({
+            'id': item.id,
+            'quantity': qty,
+            'unit_price': price,
+          });
+        }
       }
 
       await orderService.modifyOrder(
@@ -114,6 +130,57 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _addProduct() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ProductSelectionScreen()),
+    );
+
+    if (result != null) {
+      // Create a temporary OrderItem
+      // Use negative ID to mark as new/local
+      // Ensure unique negative ID
+      int tempId = -1;
+      while (_items.any((item) => item.id == tempId)) {
+        tempId--;
+      }
+
+      final product = result; // Is Product object
+
+      final newItem = OrderItem(
+        id: tempId,
+        productId: product.id,
+        productName: product.name,
+        productImage: product.image,
+        productPrice: product.price,
+        productUnit: product.unit,
+        quantity: 1, // Default to 1
+        unitPrice: product.price,
+        totalPrice: product.price,
+      );
+
+      setState(() {
+        _items.add(newItem);
+        _quantityChanges[tempId] = 1;
+        _priceChanges[tempId] = product.price;
+      });
+    }
+  }
+
+  void _removeItem(int itemId) {
+    setState(() {
+      // If it's a new item (id < 0), remove from list completely
+      if (itemId < 0) {
+        _items.removeWhere((item) => item.id == itemId);
+        _quantityChanges.remove(itemId);
+        _priceChanges.remove(itemId);
+      } else {
+        // Existing item: set quantity to 0 to mark for deletion
+        _quantityChanges[itemId] = 0;
+      }
+    });
   }
 
   @override
@@ -139,12 +206,30 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                   const SizedBox(height: 16),
                   _buildDiscountSection(),
                   const Divider(height: 32),
-                  const Text(
-                    'Order Items',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Order Items',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _addProduct,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Product'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
-                  ..._items.map((item) => _buildItemCard(item)),
+                  ..._items.map((item) {
+                    // Hide if marked for deletion (quantity 0)?
+                    // Or show in red? Let's show in red or distinct style.
+                    // Actually logic in _buildItemCard handles 0 quantity.
+                    return _buildItemCard(item);
+                  }).toList(), // .toList() needed if map returns Iterable
                   const Divider(height: 32),
                   _buildSummarySection(),
                   const SizedBox(height: 20),
@@ -301,7 +386,9 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         DropdownButtonFormField<String>(
-          initialValue: _deliveryMode,
+          value:
+              _deliveryMode, // Fix: Use value instead of initialValue for dynamic updates if needed, though here state drives it.
+          // initialValue: _deliveryMode,
           items: const [
             DropdownMenuItem(value: 'delivery', child: Text('Delivery')),
             DropdownMenuItem(value: 'pickup', child: Text('Pickup')),
@@ -343,8 +430,9 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
   Widget _buildItemCard(OrderItem item) {
     int qty = _quantityChanges[item.id] ?? item.quantity;
     double price = _priceChanges[item.id] ?? item.unitPrice;
+    bool isNew = item.id < 0;
 
-    // If quantity is 0, show differently?
+    // If quantity is 0, show differently
     if (qty == 0) {
       return Card(
         color: Colors.red.shade50,
@@ -353,12 +441,12 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
             item.productName,
             style: const TextStyle(decoration: TextDecoration.lineThrough),
           ),
+          subtitle: const Text('Marked for removal'),
           trailing: IconButton(
             icon: const Icon(Icons.undo),
             onPressed: () {
               setState(() {
-                _quantityChanges[item.id] = 1; // Restore to 1 or original?
-                // Better: Restore to original item quantity? Or just 1.
+                // Restore to original quantity if existing, or 1 if new
                 _quantityChanges[item.id] = item.quantity > 0
                     ? item.quantity
                     : 1;
@@ -371,10 +459,29 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
+      color: isNew ? Colors.green.shade50 : null,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
+            if (isNew)
+              Container(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'NEW',
+                    style: TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                ),
+              ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -406,6 +513,10 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => _removeItem(item.id),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -418,7 +529,10 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                       icon: const Icon(Icons.remove_circle_outline),
                       onPressed: () {
                         setState(() {
-                          if (qty > 0) _quantityChanges[item.id] = qty - 1;
+                          if (qty > 1) {
+                            // Don't go to 0 here, use delete button
+                            _quantityChanges[item.id] = qty - 1;
+                          }
                         });
                       },
                     ),
@@ -435,6 +549,8 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                 ),
                 const Spacer(),
                 // Price Control
+                // Disable price edit for new items if backend doesn't support it yet
+                // Or allow it if we think we can send it (currently backend serializer ignores unit_price for new items)
                 SizedBox(
                   width: 100,
                   child: TextFormField(
@@ -449,6 +565,8 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                       contentPadding: EdgeInsets.all(8),
                       border: OutlineInputBorder(),
                     ),
+                    enabled:
+                        !isNew, // Disable for new items for now as per serializer analysis
                     onChanged: (val) {
                       final p = double.tryParse(val);
                       if (p != null) {
