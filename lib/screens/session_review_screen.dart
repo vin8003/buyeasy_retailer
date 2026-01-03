@@ -47,30 +47,17 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
         widget.sessionId,
       );
 
-      // Parse Session Wrapper (though API returns a dict with 'session' key maybe?
-      // Checking GetSessionDetailsView: returns serializer.data which matches ProductUploadSession structure
+      // Backend returns { 'session': {...}, 'matched_items': [...], 'unmatched_items': [...] }
+      final sessionData = data['session'];
+      final session = ProductUploadSession.fromJson(sessionData);
 
-      // Wait, GetSessionDetailsView returns:
-      // {
-      //    "id": ...,
-      //    "items": [ ... with ui_data ... ]
-      // }
-      // So logic:
-      final session = ProductUploadSession.fromJson(data);
+      final matched = (data['matched_items'] as List)
+          .map((i) => UploadSessionItem.fromJson(i))
+          .toList();
 
-      final matched = <UploadSessionItem>[];
-      final unmatched = <UploadSessionItem>[];
-
-      for (var item in session.items) {
-        // Check ui_data from backend
-        // Backend logic: "status": "Matched" or "Unmatched" inside ui_data
-        final status = item.uiData?['status'] ?? 'Unmatched';
-        if (status == 'Matched') {
-          matched.add(item);
-        } else {
-          unmatched.add(item);
-        }
-      }
+      final unmatched = (data['unmatched_items'] as List)
+          .map((i) => UploadSessionItem.fromJson(i))
+          .toList();
 
       setState(() {
         _session = session;
