@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart' as app_auth;
-import '../services/firebase_auth_service.dart';
 
 class PhoneVerificationScreen extends StatefulWidget {
   final String phoneNumber;
-  const PhoneVerificationScreen({super.key, required this.phoneNumber});
+  final bool autoRequestOtp;
+
+  const PhoneVerificationScreen({
+    super.key,
+    required this.phoneNumber,
+    this.autoRequestOtp = true,
+  });
 
   @override
   _PhoneVerificationScreenState createState() =>
@@ -16,23 +20,31 @@ class PhoneVerificationScreen extends StatefulWidget {
 class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
   final _otpController = TextEditingController();
   late final TextEditingController _phoneController;
-  final _firebaseAuthService = FirebaseAuthService();
 
-  bool _isLoading = false;
-  String? _verificationId;
+  bool _isCodeSent = false;
+  // Use a flag for auto-send
+  bool _hasAutoSent = false;
 
   @override
   void initState() {
     super.initState();
     String phone = widget.phoneNumber;
-    // Standardize phone format if needed, assuming +91 for now as per mobile app
+    // Standardize phone format
     if (phone.startsWith('+91')) {
       phone = phone.substring(3);
     }
     _phoneController = TextEditingController(text: phone);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _sendFirebaseOtp();
+      if (widget.autoRequestOtp && !_hasAutoSent) {
+        _sendBackendOtp();
+        _hasAutoSent = true;
+      } else if (!widget.autoRequestOtp) {
+        setState(() {
+          _isCodeSent = true;
+          _hasAutoSent = true;
+        });
+      }
     });
   }
 
@@ -43,82 +55,34 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
     super.dispose();
   }
 
-  Future<void> _sendFirebaseOtp() async {
-    setState(() => _isLoading = true);
-    final phone = '+91${_phoneController.text.trim()}';
-
+  Future<void> _sendBackendOtp() async {
     try {
-      await _firebaseAuthService.verifyPhoneNumber(
-        phoneNumber: phone,
-        onVerificationCompleted: (PhoneAuthCredential credential) async {
-          await _signInWithCredential(credential);
-        },
-        onVerificationFailed: (FirebaseAuthException e) {
-          setState(() => _isLoading = false);
-          _showSnackBar('Verification failed: ${e.message}', isError: true);
-        },
-        onCodeSent: (String verificationId, int? resendToken) {
-          setState(() {
-            _isLoading = false;
-            _verificationId = verificationId;
-          });
-          _showSnackBar('OTP sent successfully');
-        },
-        onCodeAutoRetrievalTimeout: (String verificationId) {
-          setState(() => _verificationId = verificationId);
-        },
-      );
+      await context.read<app_auth.AuthProvider>().requestPhoneVerification();
+      setState(() {
+        _isCodeSent = true;
+      });
+      _showSnackBar('OTP sent successfully');
     } catch (e) {
-      setState(() => _isLoading = false);
       _showSnackBar('Error sending OTP: $e', isError: true);
     }
   }
 
-  Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
-    try {
-      setState(() => _isLoading = true);
-      final userCredential = await _firebaseAuthService.signInWithCredential(
-        credential,
-      );
-      final user = userCredential.user;
-
-      if (user != null) {
-        final idToken = await user.getIdToken();
-        final phone = '+91${_phoneController.text.trim()}';
-
-        await context.read<app_auth.AuthProvider>().verifyOtp(
-          phone,
-          firebaseToken: idToken,
-        );
-
-        _showSnackBar('Phone verified successfully!');
-        if (mounted) Navigator.pop(context, true);
-      }
-    } catch (e) {
-      _showSnackBar('Error: $e', isError: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _manualVerify() async {
+  Future<void> _verifyOtp() async {
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
       _showSnackBar('Please enter a valid 6-digit OTP', isError: true);
       return;
     }
 
-    if (_verificationId == null) {
-      _showSnackBar('Please wait for OTP to be sent', isError: true);
-      return;
+    try {
+      final phone = '+91${_phoneController.text.trim()}';
+      await context.read<app_auth.AuthProvider>().verifyOtp(phone, otp: otp);
+
+      _showSnackBar('Phone verified successfully!');
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      _showSnackBar('Error: $e', isError: true);
     }
-
-    final credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: otp,
-    );
-
-    await _signInWithCredential(credential);
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -133,6 +97,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<app_auth.AuthProvider>().isLoading;
     return Scaffold(
       appBar: AppBar(title: const Text('Verify Phone')),
       body: Padding(
@@ -147,23 +112,44 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                 labelText: 'Phone Number',
                 prefixText: '+91 ',
               ),
+              enabled: !_isCodeSent,
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _otpController,
-              decoration: const InputDecoration(labelText: 'OTP Code'),
-            ),
+            if (_isCodeSent)
+              TextField(
+                controller: _otpController,
+                decoration: const InputDecoration(labelText: 'OTP Code'),
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+              ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _manualVerify,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Verify'),
-            ),
-            TextButton(
-              onPressed: _isLoading ? null : _sendFirebaseOtp,
-              child: const Text('Resend OTP'),
-            ),
+
+            if (_isCodeSent)
+              ElevatedButton(
+                onPressed: isLoading ? null : _verifyOtp,
+                child: isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Verify'),
+              )
+            else
+              ElevatedButton(
+                onPressed: isLoading ? null : _sendBackendOtp,
+                child: isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Send OTP'),
+              ),
+
+            if (_isCodeSent)
+              TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        setState(() {
+                          _isCodeSent = false;
+                        });
+                      },
+                child: const Text('Change Number / Resend'),
+              ),
           ],
         ),
       ),
