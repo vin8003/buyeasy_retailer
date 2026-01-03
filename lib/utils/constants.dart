@@ -1,26 +1,15 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'package:shared_preferences/shared_preferences.dart';
-
 class ApiConstants {
-  static String _serverUrl =
-      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
+  static const String _serverUrl = 'https://api.ordereasy.win';
 
   static String get serverUrl => _serverUrl;
   static String get baseUrl => '$serverUrl/api';
 
   static Future<void> loadServerUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    final url = prefs.getString('api_server_url');
-    if (url != null && url.isNotEmpty) {
-      _serverUrl = url;
-    }
+    // No-op as URL is now hardcoded
   }
 
   static Future<void> setServerUrl(String url) async {
-    _serverUrl = url;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('api_server_url', url);
+    // No-op as URL is now hardcoded
   }
 
   // Auth endpoints

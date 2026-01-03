@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Centralized API service for the retailer app with token refresh and
 /// automatic logout on token expiration.
@@ -15,20 +14,7 @@ class ApiService {
   String? _accessToken;
   String? _refreshToken;
 
-  String _baseUrl = _ensureApiSuffix(
-    dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000',
-  );
-
-  static String _ensureApiSuffix(String url) {
-    String formatted = url;
-    if (formatted.endsWith('/')) {
-      formatted = formatted.substring(0, formatted.length - 1);
-    }
-    if (!formatted.endsWith('/api')) {
-      formatted = '$formatted/api';
-    }
-    return '$formatted/';
-  }
+  String _baseUrl = 'https://api.ordereasy.win/api/';
 
   // Navigation key to allow navigating from outside the widget tree
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -143,12 +129,8 @@ class ApiService {
   }
 
   Future<void> _initBaseUrl() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? savedUrl = prefs.getString('api_server_url');
-    if (savedUrl != null && savedUrl.isNotEmpty) {
-      _baseUrl = '$savedUrl/api/';
-      _dio.options.baseUrl = _baseUrl;
-    }
+    _baseUrl = 'https://api.ordereasy.win/api/';
+    _dio.options.baseUrl = _baseUrl;
   }
 
   Future<void> setBaseUrl(String url) async {
@@ -239,7 +221,8 @@ class ApiService {
   }
 
   Future<void> checkAuthToken() async {
-    await _initBaseUrl();
+    _baseUrl = 'https://api.ordereasy.win/api/';
+    _dio.options.baseUrl = _baseUrl;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('access_token');
     _refreshToken = prefs.getString('refresh_token');
