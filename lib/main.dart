@@ -12,6 +12,7 @@ import 'screens/dashboard_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
 import 'services/api_service.dart';
+import 'screens/order_detail_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -78,6 +79,16 @@ class RetailerApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/order-detail': (context) {
+          final orderId = ModalRoute.of(context)?.settings.arguments as int?;
+          if (orderId != null) {
+            return OrderDetailScreen(orderId: orderId);
+          }
+          return Scaffold(
+            appBar: AppBar(title: const Text("Error")),
+            body: const Center(child: Text("Order ID not found.")),
+          );
+        },
       },
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {

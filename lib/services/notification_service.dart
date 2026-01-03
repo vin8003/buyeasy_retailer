@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:buyeasy_retailer/services/api_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -38,7 +39,15 @@ class NotificationService {
           iOS: DarwinInitializationSettings(),
         );
 
-    await _localNotifications.initialize(initializationSettings);
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (details) {
+        // Handle notification click while app is open (Foreground)
+        if (details.payload != null) {
+          _handleLocalNotificationTap(details.payload);
+        }
+      },
+    );
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -55,7 +64,18 @@ class NotificationService {
           ?.createNotificationChannel(channel);
     }
 
+    // Check for initial message (Terminated state)
+    _fcm?.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        _handleMessageTap(message);
+      }
+    });
+
+    // Listen for foreground messages
     FirebaseMessaging.onMessage.listen(_handleMessage);
+
+    // Listen for background message clicks
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
   }
 
   Future<String?> getToken() async {
@@ -67,6 +87,32 @@ class NotificationService {
         print('Error getting FCM token: $e');
       }
       return null;
+    }
+  }
+
+  void _handleMessageTap(RemoteMessage message) {
+    if (kDebugMode) {
+      print('Message clicked: ${message.data}');
+    }
+    _navigateToOrder(message.data);
+  }
+
+  void _handleLocalNotificationTap(String? payload) {
+    if (payload != null) {
+      _navigateToOrder({'order_id': payload});
+    }
+  }
+
+  void _navigateToOrder(Map<String, dynamic> data) {
+    final orderId = data['order_id'] ?? data['id'];
+    if (orderId != null) {
+      int? parsedId = int.tryParse(orderId.toString());
+      if (parsedId != null) {
+        ApiService().navigatorKey.currentState?.pushNamed(
+          '/order-detail',
+          arguments: parsedId,
+        );
+      }
     }
   }
 
@@ -97,6 +143,9 @@ class NotificationService {
             icon: '@mipmap/ic_launcher',
           ),
         ),
+        payload:
+            message.data['order_id']?.toString() ??
+            message.data['id']?.toString(),
       );
     }
   }
