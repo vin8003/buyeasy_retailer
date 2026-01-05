@@ -296,10 +296,10 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
           children: [
             const Icon(Icons.history, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text("No active sessions"),
+            const Text("No draft sessions found"),
             const SizedBox(height: 8),
             const Text(
-              "Use the Scanner App to start a new session.",
+              "Use the Scanner App to start a new session, or resume a draft here.",
               style: TextStyle(color: Colors.grey),
             ),
           ],
@@ -344,7 +344,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: "File Upload", icon: Icon(Icons.file_upload)),
-            Tab(text: "Pending Sessions", icon: Icon(Icons.pending_actions)),
+            Tab(text: "Draft Sessions", icon: Icon(Icons.edit_document)),
           ],
         ),
       ),

@@ -42,6 +42,7 @@ class OrderModel {
   final String status;
   final double totalAmount;
   final String customerName;
+  final int customer;
   final String createdAt;
   final String deliveryMode;
   final String retailerName;
@@ -68,12 +69,14 @@ class OrderModel {
   // Loyalty fields
   final double? pointsRedeemed;
   final double? discountFromPoints;
+  final int unreadChatCount;
 
   OrderModel({
     required this.id,
     required this.orderNumber,
     required this.status,
     required this.totalAmount,
+    required this.customer,
     required this.customerName,
     required this.createdAt,
     required this.deliveryMode,
@@ -98,6 +101,7 @@ class OrderModel {
     this.cancelledAt,
     this.pointsRedeemed,
     this.discountFromPoints,
+    this.unreadChatCount = 0,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -106,6 +110,7 @@ class OrderModel {
       orderNumber: json['order_number'] ?? '',
       status: json['status'] ?? 'pending',
       totalAmount: double.parse(json['total_amount']?.toString() ?? '0'),
+      customer: json['customer'] ?? 0,
       customerName: json['customer_name'] ?? 'Guest',
       createdAt: json['created_at'] ?? '',
       deliveryMode: json['delivery_mode'] ?? 'delivery',
@@ -146,6 +151,7 @@ class OrderModel {
       discountFromPoints: json['discount_from_points'] != null
           ? double.tryParse(json['discount_from_points'].toString())
           : null,
+      unreadChatCount: json['unread_chat_count'] ?? 0,
     );
   }
 }

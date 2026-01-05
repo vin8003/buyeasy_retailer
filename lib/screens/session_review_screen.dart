@@ -146,7 +146,13 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
   String _getImageUrl(String? partialUrl) {
     if (partialUrl == null || partialUrl.isEmpty) return '';
     if (partialUrl.startsWith('http')) return partialUrl;
-    return '${ApiConstants.serverUrl}$partialUrl';
+
+    // It is a relative path
+    String path = partialUrl;
+    if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+    return '${ApiConstants.serverUrl}$path';
   }
 
   void _showImagePopup(String imageUrl) {
@@ -174,8 +180,12 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
   }
 
   Future<void> _saveDraft() async {
-    // ... (same as before)
-    if (_modifiedItemIds.isEmpty) return;
+    if (_modifiedItemIds.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No changes to save.")));
+      return;
+    }
 
     setState(() => _isLoading = true);
     final token = context.read<AuthProvider>().token!;
@@ -193,15 +203,22 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
         itemsToUpdate,
       );
       _modifiedItemIds.clear();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Draft Saved")));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Draft Saved. Resume later from Bulk Upload > Draft Sessions.",
+          ),
+          duration: Duration(seconds: 4),
+        ),
+      );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Save Failed: $e")));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -219,7 +236,6 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
 
     try {
       // 1. Update all items
-      // We ignore _modifiedItemIds and just save everything to be safe.
       if (itemsToUpdate.isNotEmpty) {
         await _productService.updateSessionItems(
           token,
@@ -254,6 +270,7 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Commit Failed: $e")));
@@ -270,12 +287,13 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
       appBar: AppBar(
         title: Text("Review Session #${widget.sessionId}"),
         actions: [
-          if (_modifiedItemIds.isNotEmpty)
-            TextButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text("Save Draft"),
-              onPressed: _isLoading ? null : _saveDraft,
-            ),
+          TextButton.icon(
+            icon: const Icon(Icons.save),
+            label: const Text("Save Draft"),
+            onPressed: (_isLoading || _modifiedItemIds.isEmpty)
+                ? null
+                : _saveDraft,
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -326,6 +344,7 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
 
     return ListView.builder(
       itemCount: items.length,
+      padding: const EdgeInsets.only(bottom: 80), // Space for bottom button
       itemBuilder: (context, index) {
         final item = items[index];
         if (isMatched) {
@@ -396,18 +415,23 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
                       itemBuilder: (context, index) {
                         return GestureDetector(
                           onTap: () => _showImagePopup(allImages[index]),
-                          child: Image.network(
-                            allImages[index],
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.broken_image, size: 15),
-                            ),
-                          ),
+                          child: (allImages[index].isEmpty)
+                              ? const Icon(Icons.broken_image)
+                              : Image.network(
+                                  allImages[index],
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: Colors.grey[200],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      size: 15,
+                                    ),
+                                  ),
+                                ),
                         );
                       },
                     ),
@@ -468,14 +492,31 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
             Row(
               children: [
                 Expanded(
-                  child: _buildCompactInput(item, 'original_price', 'MRP'),
+                  child: _buildTextField(
+                    item,
+                    'original_price',
+                    'MRP',
+                    isNumber: true,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _buildCompactInput(item, 'price', 'Selling Price'),
+                  child: _buildTextField(
+                    item,
+                    'price',
+                    'Selling Price',
+                    isNumber: true,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildCompactInput(item, 'quantity', 'Stock')),
+                Expanded(
+                  child: _buildTextField(
+                    item,
+                    'quantity',
+                    'Stock',
+                    isNumber: true,
+                  ),
+                ),
               ],
             ),
           ],
@@ -484,26 +525,18 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
     );
   }
 
-  Widget _buildCompactInput(UploadSessionItem item, String key, String label) {
-    final val = item.productDetails[key]?.toString() ?? '';
-    return TextFormField(
-      initialValue: val,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        isDense: true,
-      ),
-      onChanged: (v) {
-        item.productDetails[key] = num.tryParse(v) ?? 0;
-        if (item.id != null) _modifiedItemIds.add(item.id!);
-      },
-    );
-  }
-
+  // ...
+  // ...
   Widget _buildUnmatchedItemCard(UploadSessionItem item) {
-    final fullImageUrl = _getImageUrl(item.imageUrl);
+    // Fallback logic: check item.imageUrl, then productDetails['image']
+    String? imgSource = item.imageUrl;
+    if ((imgSource == null || imgSource.isEmpty) &&
+        item.productDetails.containsKey('image')) {
+      imgSource = item.productDetails['image']?.toString();
+    }
+
+    final fullImageUrl = _getImageUrl(imgSource);
+
     return Card(
       margin: const EdgeInsets.all(8),
       child: ExpansionTile(
