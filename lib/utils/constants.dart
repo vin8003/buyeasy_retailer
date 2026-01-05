@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String _serverUrl = 'https://api.ordereasy.win';
+  static const String _serverUrl = 'http://127.0.0.1:8000';
 
   static String get serverUrl => _serverUrl;
   static String get baseUrl => '$serverUrl/api';
@@ -50,4 +50,15 @@ class ApiConstants {
 
   // Retailer endpoints
   static String get rewardConfig => '$baseUrl/retailers/reward-config/';
+
+  // Customer rating endpoints
+  static String get rateCustomer => '$baseUrl/customer/rate-customer/';
+  static String getCustomerRating(int customerId) =>
+      '$baseUrl/customer/$customerId/rating/';
+
+  // Chat endpoints
+  static String orderMessages(int orderId) =>
+      '$baseUrl/orders/$orderId/messages/';
+  static String sendOrderMessage(int orderId) =>
+      '$baseUrl/orders/$orderId/messages/send/';
 }

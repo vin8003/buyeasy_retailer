@@ -6,7 +6,9 @@ import '../services/order_service.dart';
 import '../services/reward_service.dart';
 import '../models/reward_configuration.dart';
 import '../providers/auth_provider.dart';
+import '../providers/product_provider.dart';
 import '../utils/constants.dart';
+import 'package:collection/collection.dart';
 
 class OrderEditScreen extends StatefulWidget {
   final OrderModel order;
@@ -17,35 +19,81 @@ class OrderEditScreen extends StatefulWidget {
   _OrderEditScreenState createState() => _OrderEditScreenState();
 }
 
+class EditableOrderItem {
+  final int? id; // null for new items
+  final int productId;
+  final String productName;
+  final String? productImage;
+  final String productUnit;
+  int quantity;
+  double unitPrice;
+
+  EditableOrderItem({
+    this.id,
+    required this.productId,
+    required this.productName,
+    this.productImage,
+    required this.productUnit,
+    required this.quantity,
+    required this.unitPrice,
+  });
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'quantity': quantity,
+      'unit_price': unitPrice,
+    };
+    if (id != null) {
+      map['id'] = id;
+    } else {
+      map['product'] = productId;
+    }
+    return map;
+  }
+}
+
 class _OrderEditScreenState extends State<OrderEditScreen> {
-  late List<OrderItem> _items;
+  late List<EditableOrderItem> _items;
   late String _deliveryMode;
   late TextEditingController _discountController;
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   RewardConfiguration? _rewardConfig;
 
-  // Track changes
-  final Map<int, int> _quantityChanges = {};
-  final Map<int, double> _priceChanges = {};
-
   @override
   void initState() {
     super.initState();
-    _items = List.from(widget.order.items ?? []);
+    _items = (widget.order.items ?? [])
+        .map(
+          (item) => EditableOrderItem(
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            productImage: item.productImage,
+            productUnit: item.productUnit,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          ),
+        )
+        .toList();
+
     _deliveryMode = widget.order.deliveryMode;
     _discountController = TextEditingController(
       text: widget.order.discountAmount?.toString() ?? '0',
     );
-    // Initialize trackers
-    for (var item in _items) {
-      _quantityChanges[item.id] = item.quantity;
-      _priceChanges[item.id] = item.unitPrice;
-    }
+
     _discountController.addListener(() {
       if (mounted) setState(() {});
     });
     _fetchRewardConfig();
+    _fetchProducts();
+  }
+
+  Future<void> _fetchProducts() async {
+    final token = context.read<AuthProvider>().token;
+    if (token != null) {
+      context.read<ProductProvider>().fetchProducts(token);
+    }
   }
 
   Future<void> _fetchRewardConfig() async {
@@ -81,19 +129,9 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final orderService = OrderService();
 
-      List<Map<String, dynamic>> itemsPayload = [];
-
-      for (var item in _items) {
-        int newQty = _quantityChanges[item.id]!;
-        double newPrice = _priceChanges[item.id]!;
-
-        // Sending all with current values
-        itemsPayload.add({
-          'id': item.id,
-          'quantity': newQty,
-          'unit_price': newPrice,
-        });
-      }
+      List<Map<String, dynamic>> itemsPayload = _items
+          .map((e) => e.toJson())
+          .toList();
 
       await orderService.modifyOrder(
         authProvider.token!,
@@ -106,13 +144,13 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order updated successfully')),
       );
-      Navigator.pop(context, true); // Return true to refresh
+      Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error updating order: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -139,9 +177,22 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                   const SizedBox(height: 16),
                   _buildDiscountSection(),
                   const Divider(height: 32),
-                  const Text(
-                    'Order Items',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Order Items',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _showProductPicker,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Product'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   ..._items.map((item) => _buildItemCard(item)),
@@ -154,25 +205,89 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     );
   }
 
+  void _showProductPicker() {
+    final productProvider = context.read<ProductProvider>();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select Product'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: productProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : productProvider.products.isEmpty
+                ? const Center(child: Text('No products available'))
+                : ListView.builder(
+                    itemCount: productProvider.products.length,
+                    itemBuilder: (context, index) {
+                      final product = productProvider.products[index];
+                      return ListTile(
+                        leading: product.image != null
+                            ? CachedNetworkImage(
+                                imageUrl:
+                                    '${ApiConstants.serverUrl}${product.image}',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(Icons.image),
+                        title: Text(product.name),
+                        subtitle: Text('₹${product.price} / ${product.unit}'),
+                        onTap: () {
+                          setState(() {
+                            // Check if already added
+                            final existing = _items
+                                .where((i) => i.productId == product.id)
+                                .firstOrNull;
+                            if (existing != null) {
+                              existing.quantity += 1;
+                            } else {
+                              _items.add(
+                                EditableOrderItem(
+                                  productId: product.id,
+                                  productName: product.name,
+                                  productImage: product.image,
+                                  productUnit: product.unit,
+                                  quantity: 1,
+                                  unitPrice: product.price,
+                                ),
+                              );
+                            }
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildSummarySection() {
     double subtotal = 0;
     for (var item in _items) {
-      int qty = _quantityChanges[item.id] ?? 0;
-      double price = _priceChanges[item.id] ?? 0;
-      subtotal += qty * price;
+      subtotal += item.quantity * item.unitPrice;
     }
 
     double deliveryFee = _deliveryMode == 'delivery' ? 50 : 0;
     double discount = double.tryParse(_discountController.text) ?? 0;
 
-    // Total before points is what we used for limits in backend
     double totalBeforePoints = subtotal + deliveryFee - discount;
     if (totalBeforePoints < 0) totalBeforePoints = 0;
 
     double pointsRefundValue = 0;
     double currentPointsValue = 0;
 
-    // Calculate potential refund
     if (_rewardConfig != null &&
         widget.order.pointsRedeemed != null &&
         widget.order.pointsRedeemed! > 0) {
@@ -195,9 +310,6 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       }
     }
 
-    // Final total calculation:
-    // Backend logic: order.total_amount = total_before_points - redeemable_amount
-    // Here we can just subtract the adjusted points value
     double finalPointsDiscount = currentPointsValue - pointsRefundValue;
     double total = totalBeforePoints - finalPointsDiscount;
     if (total < 0) total = 0;
@@ -281,7 +393,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
             ),
           ),
           Text(
-            '₹${amount.abs().toStringAsFixed(2)}', // Use abs for display if desired, or let negative sign show
+            '₹${amount.abs().toStringAsFixed(2)}',
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               color: color,
@@ -301,7 +413,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         DropdownButtonFormField<String>(
-          initialValue: _deliveryMode,
+          value: _deliveryMode,
           items: const [
             DropdownMenuItem(value: 'delivery', child: Text('Delivery')),
             DropdownMenuItem(value: 'pickup', child: Text('Pickup')),
@@ -340,12 +452,8 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     );
   }
 
-  Widget _buildItemCard(OrderItem item) {
-    int qty = _quantityChanges[item.id] ?? item.quantity;
-    double price = _priceChanges[item.id] ?? item.unitPrice;
-
-    // If quantity is 0, show differently?
-    if (qty == 0) {
+  Widget _buildItemCard(EditableOrderItem item) {
+    if (item.quantity == 0) {
       return Card(
         color: Colors.red.shade50,
         child: ListTile(
@@ -355,15 +463,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
           ),
           trailing: IconButton(
             icon: const Icon(Icons.undo),
-            onPressed: () {
-              setState(() {
-                _quantityChanges[item.id] = 1; // Restore to 1 or original?
-                // Better: Restore to original item quantity? Or just 1.
-                _quantityChanges[item.id] = item.quantity > 0
-                    ? item.quantity
-                    : 1;
-              });
-            },
+            onPressed: () => setState(() => item.quantity = 1),
           ),
         ),
       );
@@ -376,7 +476,6 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
         child: Column(
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (item.productImage != null)
                   CachedNetworkImage(
@@ -386,10 +485,6 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) =>
-                        Container(color: Colors.grey[200]),
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.broken_image, size: 60),
                   )
                 else
                   const Icon(Icons.image, size: 60),
@@ -406,39 +501,46 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () {
+                    setState(() {
+                      if (item.id == null) {
+                        _items.remove(item);
+                      } else {
+                        item.quantity = 0;
+                      }
+                    });
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 10),
             Row(
               children: [
-                // Quantity Control
                 Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () {
-                        setState(() {
-                          if (qty > 0) _quantityChanges[item.id] = qty - 1;
-                        });
-                      },
+                      onPressed: () => setState(() {
+                        if (item.quantity > 0) item.quantity--;
+                      }),
                     ),
-                    Text('$qty', style: const TextStyle(fontSize: 16)),
+                    Text(
+                      '${item.quantity}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () {
-                        setState(() {
-                          _quantityChanges[item.id] = qty + 1;
-                        });
-                      },
+                      onPressed: () => setState(() => item.quantity++),
                     ),
                   ],
                 ),
                 const Spacer(),
-                // Price Control
                 SizedBox(
                   width: 100,
                   child: TextFormField(
-                    initialValue: price.toString(),
+                    initialValue: item.unitPrice.toString(),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -451,11 +553,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     ),
                     onChanged: (val) {
                       final p = double.tryParse(val);
-                      if (p != null) {
-                        setState(() {
-                          _priceChanges[item.id] = p;
-                        });
-                      }
+                      if (p != null) setState(() => item.unitPrice = p);
                     },
                   ),
                 ),
