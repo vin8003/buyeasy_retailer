@@ -50,15 +50,4 @@ class ApiConstants {
 
   // Retailer endpoints
   static String get rewardConfig => '$baseUrl/retailers/reward-config/';
-
-  // Customer rating endpoints
-  static String get rateCustomer => '$baseUrl/customer/rate-customer/';
-  static String getCustomerRating(int customerId) =>
-      '$baseUrl/customer/$customerId/rating/';
-
-  // Chat endpoints
-  static String orderMessages(int orderId) =>
-      '$baseUrl/orders/$orderId/messages/';
-  static String sendOrderMessage(int orderId) =>
-      '$baseUrl/orders/$orderId/messages/send/';
 }

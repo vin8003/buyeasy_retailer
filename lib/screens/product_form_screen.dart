@@ -164,7 +164,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (widget.product!.image!.startsWith('http')) {
         return widget.product!.image!;
       }
-      return '${ApiConstants.serverUrl}${widget.product!.image!.startsWith('/') ? '' : '/'}${widget.product!.image!}';
+      return '${ApiConstants.serverUrl}${widget.product!.image!}';
     }
     return '';
   }

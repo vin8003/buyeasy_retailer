@@ -97,10 +97,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               child: product.image != null
                                   ? CachedNetworkImage(
                                       imageUrl:
-                                          product.image != null &&
-                                              product.image!.startsWith('http')
-                                          ? product.image!
-                                          : '${ApiConstants.serverUrl}${product.image!.startsWith('/') ? '' : '/'}${product.image}',
+                                          '${ApiConstants.serverUrl}${product.image}',
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,

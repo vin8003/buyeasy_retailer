@@ -6,10 +6,8 @@ import '../services/order_service.dart';
 import '../services/reward_service.dart';
 import '../models/reward_configuration.dart';
 import '../providers/auth_provider.dart';
-import '../providers/product_provider.dart';
 import '../utils/constants.dart';
 import 'product_selection_screen.dart';
-import 'package:collection/collection.dart';
 
 class OrderEditScreen extends StatefulWidget {
   final OrderModel order;
@@ -20,80 +18,35 @@ class OrderEditScreen extends StatefulWidget {
   _OrderEditScreenState createState() => _OrderEditScreenState();
 }
 
-class EditableOrderItem {
-  final int? id; // null for new items
-  final int productId;
-  final String productName;
-  final String? productImage;
-  final String productUnit;
-  int quantity;
-  double unitPrice;
-
-  EditableOrderItem({
-    this.id,
-    required this.productId,
-    required this.productName,
-    this.productImage,
-    required this.productUnit,
-    required this.quantity,
-    required this.unitPrice,
-  });
-
-  Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{
-      'quantity': quantity,
-      'unit_price': unitPrice,
-    };
-    if (id != null) {
-      map['id'] = id;
-    } else {
-      map['product'] = productId;
-    }
-    return map;
-  }
-}
-
 class _OrderEditScreenState extends State<OrderEditScreen> {
-  late List<EditableOrderItem> _items;
+  late List<OrderItem> _items;
   late String _deliveryMode;
   late TextEditingController _discountController;
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   RewardConfiguration? _rewardConfig;
 
+  // Track changes
+  final Map<int, int> _quantityChanges = {};
+  final Map<int, double> _priceChanges = {};
+
   @override
   void initState() {
     super.initState();
-    _items = (widget.order.items ?? [])
-        .map(
-          (item) => EditableOrderItem(
-            id: item.id,
-            productId: item.productId,
-            productName: item.productName,
-            productImage: item.productImage,
-            productUnit: item.productUnit,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-          ),
-        )
-        .toList();
-
+    _items = List.from(widget.order.items ?? []);
     _deliveryMode = widget.order.deliveryMode;
     _discountController = TextEditingController(
       text: widget.order.discountAmount?.toString() ?? '0',
     );
+    // Initialize trackers for existing items
+    for (var item in _items) {
+      _quantityChanges[item.id] = item.quantity;
+      _priceChanges[item.id] = item.unitPrice;
+    }
     _discountController.addListener(() {
       if (mounted) setState(() {});
     });
     _fetchRewardConfig();
-    _fetchProducts();
-  }
-
-  Future<void> _fetchProducts() async {
-    final token = context.read<AuthProvider>().token;
-    if (token != null) {
-      context.read<ProductProvider>().fetchProducts(token);
-    }
   }
 
   Future<void> _fetchRewardConfig() async {
@@ -129,9 +82,34 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final orderService = OrderService();
 
-      List<Map<String, dynamic>> itemsPayload = _items
-          .map((e) => e.toJson())
-          .toList();
+      List<Map<String, dynamic>> itemsPayload = [];
+
+      for (var item in _items) {
+        // Skip items that are marked for removal (quantity 0) IF they are new items.
+        // For existing items (id > 0), simple quantity=0 update deletes them on backend.
+        // For new items (id < 0), if quantity is 0, just don't send them.
+
+        int qty = _quantityChanges[item.id] ?? item.quantity;
+        double price = _priceChanges[item.id] ?? item.unitPrice;
+
+        if (item.id < 0 && qty == 0) continue;
+
+        if (item.id < 0) {
+          // New item
+          itemsPayload.add({
+            'product_id': item.productId,
+            'quantity': qty,
+            // 'unit_price': price, // Price for new items usually taken from product, but if we want to support custom price for new items, backend needs update. For now serializer uses product.price but we can override if backend supports it. Checked serializer: it uses product.price. Adding unit_price support would be next step.
+          });
+        } else {
+          // Existing item
+          itemsPayload.add({
+            'id': item.id,
+            'quantity': qty,
+            'unit_price': price,
+          });
+        }
+      }
 
       await orderService.modifyOrder(
         authProvider.token!,
@@ -144,13 +122,13 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order updated successfully')),
       );
-      Navigator.pop(context, true);
+      Navigator.pop(context, true); // Return true to refresh
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error updating order: $e')));
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -239,7 +217,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: _showProductPicker,
+                        onPressed: _addProduct,
                         icon: const Icon(Icons.add),
                         label: const Text('Add Product'),
                       ),
@@ -261,89 +239,25 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     );
   }
 
-  void _showProductPicker() {
-    final productProvider = context.read<ProductProvider>();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Select Product'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
-            child: productProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : productProvider.products.isEmpty
-                ? const Center(child: Text('No products available'))
-                : ListView.builder(
-                    itemCount: productProvider.products.length,
-                    itemBuilder: (context, index) {
-                      final product = productProvider.products[index];
-                      return ListTile(
-                        leading: product.image != null
-                            ? CachedNetworkImage(
-                                imageUrl:
-                                    '${ApiConstants.serverUrl}${product.image}',
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                              )
-                            : const Icon(Icons.image),
-                        title: Text(product.name),
-                        subtitle: Text('₹${product.price} / ${product.unit}'),
-                        onTap: () {
-                          setState(() {
-                            // Check if already added
-                            final existing = _items
-                                .where((i) => i.productId == product.id)
-                                .firstOrNull;
-                            if (existing != null) {
-                              existing.quantity += 1;
-                            } else {
-                              _items.add(
-                                EditableOrderItem(
-                                  productId: product.id,
-                                  productName: product.name,
-                                  productImage: product.image,
-                                  productUnit: product.unit,
-                                  quantity: 1,
-                                  unitPrice: product.price,
-                                ),
-                              );
-                            }
-                          });
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildSummarySection() {
     double subtotal = 0;
     for (var item in _items) {
-      subtotal += item.quantity * item.unitPrice;
+      int qty = _quantityChanges[item.id] ?? 0;
+      double price = _priceChanges[item.id] ?? 0;
+      subtotal += qty * price;
     }
 
     double deliveryFee = _deliveryMode == 'delivery' ? 50 : 0;
     double discount = double.tryParse(_discountController.text) ?? 0;
 
+    // Total before points is what we used for limits in backend
     double totalBeforePoints = subtotal + deliveryFee - discount;
     if (totalBeforePoints < 0) totalBeforePoints = 0;
 
     double pointsRefundValue = 0;
     double currentPointsValue = 0;
 
+    // Calculate potential refund
     if (_rewardConfig != null &&
         widget.order.pointsRedeemed != null &&
         widget.order.pointsRedeemed! > 0) {
@@ -366,6 +280,9 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
       }
     }
 
+    // Final total calculation:
+    // Backend logic: order.total_amount = total_before_points - redeemable_amount
+    // Here we can just subtract the adjusted points value
     double finalPointsDiscount = currentPointsValue - pointsRefundValue;
     double total = totalBeforePoints - finalPointsDiscount;
     if (total < 0) total = 0;
@@ -449,7 +366,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
             ),
           ),
           Text(
-            '₹${amount.abs().toStringAsFixed(2)}',
+            '₹${amount.abs().toStringAsFixed(2)}', // Use abs for display if desired, or let negative sign show
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               color: color,
@@ -469,7 +386,9 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         DropdownButtonFormField<String>(
-          value: _deliveryMode,
+          value:
+              _deliveryMode, // Fix: Use value instead of initialValue for dynamic updates if needed, though here state drives it.
+          // initialValue: _deliveryMode,
           items: const [
             DropdownMenuItem(value: 'delivery', child: Text('Delivery')),
             DropdownMenuItem(value: 'pickup', child: Text('Pickup')),
@@ -508,8 +427,13 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
     );
   }
 
-  Widget _buildItemCard(EditableOrderItem item) {
-    if (item.quantity == 0) {
+  Widget _buildItemCard(OrderItem item) {
+    int qty = _quantityChanges[item.id] ?? item.quantity;
+    double price = _priceChanges[item.id] ?? item.unitPrice;
+    bool isNew = item.id < 0;
+
+    // If quantity is 0, show differently
+    if (qty == 0) {
       return Card(
         color: Colors.red.shade50,
         child: ListTile(
@@ -520,7 +444,14 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
           subtitle: const Text('Marked for removal'),
           trailing: IconButton(
             icon: const Icon(Icons.undo),
-            onPressed: () => setState(() => item.quantity = 1),
+            onPressed: () {
+              setState(() {
+                // Restore to original quantity if existing, or 1 if new
+                _quantityChanges[item.id] = item.quantity > 0
+                    ? item.quantity
+                    : 1;
+              });
+            },
           ),
         ),
       );
@@ -552,6 +483,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                 ),
               ),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (item.productImage != null)
                   CachedNetworkImage(
@@ -561,6 +493,10 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
+                    placeholder: (context, url) =>
+                        Container(color: Colors.grey[200]),
+                    errorWidget: (context, url, error) =>
+                        const Icon(Icons.broken_image, size: 60),
                   )
                 else
                   const Icon(Icons.image, size: 60),
@@ -579,44 +515,46 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () {
-                    setState(() {
-                      if (item.id == null) {
-                        _items.remove(item);
-                      } else {
-                        item.quantity = 0;
-                      }
-                    });
-                  },
+                  onPressed: () => _removeItem(item.id),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Row(
               children: [
+                // Quantity Control
                 Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () => setState(() {
-                        if (item.quantity > 0) item.quantity--;
-                      }),
+                      onPressed: () {
+                        setState(() {
+                          if (qty > 1) {
+                            // Don't go to 0 here, use delete button
+                            _quantityChanges[item.id] = qty - 1;
+                          }
+                        });
+                      },
                     ),
-                    Text(
-                      '${item.quantity}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    Text('$qty', style: const TextStyle(fontSize: 16)),
                     IconButton(
                       icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () => setState(() => item.quantity++),
+                      onPressed: () {
+                        setState(() {
+                          _quantityChanges[item.id] = qty + 1;
+                        });
+                      },
                     ),
                   ],
                 ),
                 const Spacer(),
+                // Price Control
+                // Disable price edit for new items if backend doesn't support it yet
+                // Or allow it if we think we can send it (currently backend serializer ignores unit_price for new items)
                 SizedBox(
                   width: 100,
                   child: TextFormField(
-                    initialValue: item.unitPrice.toString(),
+                    initialValue: price.toString(),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -631,7 +569,11 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
                         !isNew, // Disable for new items for now as per serializer analysis
                     onChanged: (val) {
                       final p = double.tryParse(val);
-                      if (p != null) setState(() => item.unitPrice = p);
+                      if (p != null) {
+                        setState(() {
+                          _priceChanges[item.id] = p;
+                        });
+                      }
                     },
                   ),
                 ),

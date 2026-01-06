@@ -10,7 +10,6 @@ import '../providers/dashboard_provider.dart';
 import '../providers/order_provider.dart';
 import '../services/notification_service.dart';
 import 'dart:async';
-import 'order_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -38,53 +37,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ) {
       if (data['type'] == 'new_order' || data['event'] == 'order_refresh') {
         _refreshData();
-      } else if (data['event'] == 'order_chat') {
-        if (mounted) {
-          final orderId = int.tryParse(data['order_id'].toString());
-          if (orderId != null) {
-            final currentChatId = context
-                .read<OrderProvider>()
-                .currentChatOrderId;
-
-            // Only if NOT in that chat
-            if (currentChatId != orderId) {
-              context.read<OrderProvider>().incrementUnreadCount(orderId);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('New message for Order #${data['order_id']}'),
-                  action: SnackBarAction(
-                    label: 'VIEW',
-                    onPressed: () {
-                      // ... existing view logic
-                      final token = context.read<AuthProvider>().token;
-                      if (token != null) {
-                        context
-                            .read<OrderProvider>()
-                            .fetchOrderDetails(token, orderId)
-                            .then((_) {
-                              final order = context
-                                  .read<OrderProvider>()
-                                  .selectedOrder;
-                              if (order != null && mounted) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        OrderDetailScreen(orderId: orderId),
-                                  ),
-                                );
-                              }
-                            });
-                      }
-                    },
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          }
-        }
       }
     });
   }

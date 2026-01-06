@@ -10,7 +10,6 @@ import '../services/notification_service.dart';
 import 'order_edit_screen.dart';
 import '../utils/constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'order_chat_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -48,18 +47,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   void _fetchDetails() {
     final token = context.read<AuthProvider>().token;
     if (token != null) {
-      context
-          .read<OrderProvider>()
-          .fetchOrderDetails(token, widget.orderId)
-          .then((_) {
-            final order = context.read<OrderProvider>().selectedOrder;
-            if (order != null) {
-              context.read<OrderProvider>().fetchCustomerRating(
-                token,
-                order.customer,
-              );
-            }
-          });
+      context.read<OrderProvider>().fetchOrderDetails(token, widget.orderId);
     }
   }
 
@@ -124,56 +112,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 flex: 1,
                 child: Column(
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          provider.resetUnreadCount(order.id);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  OrderChatScreen(order: order),
-                            ),
-                          );
-                        },
-                        icon: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.chat_bubble_outline),
-                            if ((provider.unreadCounts[order.id] ?? 0) > 0)
-                              Positioned(
-                                right: -8,
-                                top: -8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    '${provider.unreadCounts[order.id]}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        label: const Text('Chat with Customer'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                     _buildStatusSection(order, provider),
-                    const SizedBox(height: 24),
                     const SizedBox(height: 24),
                     _buildCustomerSection(order),
                     const SizedBox(height: 24),
@@ -501,47 +440,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Verified Customer'),
-                  Consumer<OrderProvider>(
-                    builder: (context, provider, child) {
-                      final ratingData = provider.customerRating;
-                      if (ratingData == null) return const SizedBox.shrink();
-
-                      final avgRating = ratingData['average_rating'] ?? 0.0;
-                      final totalRatings = ratingData['total_ratings'] ?? 0;
-
-                      return Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            avgRating > 0
-                                ? '$avgRating ($totalRatings ratings)'
-                                : 'No ratings yet',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
                   if (order.customerPhone != null)
                     Text('Phone: ${order.customerPhone}'),
                   if (order.customerEmail != null)
                     Text('Email: ${order.customerEmail}'),
                 ],
               ),
-              trailing: order.status == 'delivered'
-                  ? IconButton(
-                      icon: const Icon(
-                        Icons.rate_review_outlined,
-                        color: Colors.blue,
-                      ),
-                      onPressed: () => _showRatingDialog(order),
-                      tooltip: 'Rate Customer',
-                    )
-                  : null,
             ),
             const SizedBox(height: 12),
             const Text(
@@ -708,90 +612,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showRatingDialog(OrderModel order) {
-    int selectedRating = 5;
-    final TextEditingController commentController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Rate ${order.customerName}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('How was your experience with this customer?'),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    icon: Icon(
-                      index < selectedRating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 32,
-                    ),
-                    onPressed: () {
-                      setDialogState(() {
-                        selectedRating = index + 1;
-                      });
-                    },
-                  );
-                }),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: commentController,
-                decoration: const InputDecoration(
-                  hintText:
-                      'Add a private comment (visible to other retailers)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final token = context.read<AuthProvider>().token;
-                if (token != null) {
-                  try {
-                    await context.read<OrderProvider>().rateCustomer(
-                      token,
-                      order.customer,
-                      selectedRating,
-                      commentController.text,
-                    );
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Rating submitted successfully'),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  }
-                }
-              },
-              child: const Text('Submit Rating'),
-            ),
-          ],
-        ),
       ),
     );
   }
