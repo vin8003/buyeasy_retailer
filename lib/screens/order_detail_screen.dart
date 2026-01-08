@@ -10,6 +10,7 @@ import '../services/notification_service.dart';
 import 'order_edit_screen.dart';
 import '../utils/constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'order_chat_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -37,8 +38,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _notificationSubscription = NotificationService().updateStream.listen((
       data,
     ) {
+      bool shouldRefresh = false;
       if (data['event'] == 'order_refresh' &&
           data['order_id'] == widget.orderId.toString()) {
+        shouldRefresh = true;
+      }
+      if (data['type'] == 'order_chat' &&
+          data['order_id'] == widget.orderId.toString()) {
+        shouldRefresh = true;
+      }
+
+      if (shouldRefresh) {
         _fetchDetails();
       }
     });
@@ -75,6 +85,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             Navigator.pop(context);
           },
         ),
+        actions: [],
       ),
       body: orderProvider.isLoading && order == null
           ? const Center(child: CircularProgressIndicator())
@@ -112,6 +123,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 flex: 1,
                 child: Column(
                   children: [
+                    _buildChatCta(order),
+                    const SizedBox(height: 24),
                     _buildStatusSection(order, provider),
                     const SizedBox(height: 24),
                     _buildCustomerSection(order),
@@ -639,5 +652,87 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       default:
         return Colors.grey;
     }
+  }
+
+  Widget _buildChatCta(OrderModel order) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OrderChatScreen(
+                orderId: order.id,
+                orderNumber: order.orderNumber,
+              ),
+            ),
+          );
+          _fetchDetails();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.support_agent, color: Colors.teal),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Order Support',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chat with Customer',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              if (order.unreadMessagesCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${order.unreadMessagesCount} new',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

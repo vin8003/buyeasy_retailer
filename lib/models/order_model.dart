@@ -68,6 +68,7 @@ class OrderModel {
   // Loyalty fields
   final double? pointsRedeemed;
   final double? discountFromPoints;
+  final int unreadMessagesCount;
 
   OrderModel({
     required this.id,
@@ -98,6 +99,7 @@ class OrderModel {
     this.cancelledAt,
     this.pointsRedeemed,
     this.discountFromPoints,
+    this.unreadMessagesCount = 0,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -146,6 +148,7 @@ class OrderModel {
       discountFromPoints: json['discount_from_points'] != null
           ? double.tryParse(json['discount_from_points'].toString())
           : null,
+      unreadMessagesCount: json['unread_messages_count'] ?? 0,
     );
   }
 }

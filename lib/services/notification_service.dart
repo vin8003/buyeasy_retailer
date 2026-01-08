@@ -121,7 +121,9 @@ class NotificationService {
       print('Handling foreground message: ${message.messageId}');
     }
 
-    if (message.data['is_silent'] == 'true' || message.data['event'] != null) {
+    if (message.data['is_silent'] == 'true' ||
+        message.data['event'] != null ||
+        message.data['type'] == 'order_chat') {
       _updateController.add(Map<String, dynamic>.from(message.data));
       if (message.data['is_silent'] == 'true') return;
     }

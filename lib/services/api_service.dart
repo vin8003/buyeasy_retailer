@@ -14,7 +14,7 @@ class ApiService {
   String? _accessToken;
   String? _refreshToken;
 
-  String _baseUrl = 'https://api.ordereasy.win/api/';
+  String _baseUrl = 'https://ordereasy.win/api/';
 
   // Navigation key to allow navigating from outside the widget tree
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -129,8 +129,9 @@ class ApiService {
   }
 
   Future<void> _initBaseUrl() async {
-    _baseUrl = 'https://api.ordereasy.win/api/';
+    _baseUrl = 'https://ordereasy.win/api/';
     _dio.options.baseUrl = _baseUrl;
+    debugPrint('Retailer ApiService Initialized with Base URL: $_baseUrl');
   }
 
   Future<void> setBaseUrl(String url) async {
@@ -221,7 +222,7 @@ class ApiService {
   }
 
   Future<void> checkAuthToken() async {
-    _baseUrl = 'https://api.ordereasy.win/api/';
+    _baseUrl = 'https://ordereasy.win/api/';
     _dio.options.baseUrl = _baseUrl;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('access_token');
@@ -377,5 +378,18 @@ class ApiService {
     if (firebaseToken != null) data['firebase_token'] = firebaseToken;
 
     return _dio.post('auth/password/reset/', data: data);
+  }
+
+  // Chat
+  Future<Response> getOrderChatMessages(int orderId) {
+    return _dio.get('orders/$orderId/chat/');
+  }
+
+  Future<Response> sendOrderMessage(int orderId, String message) {
+    return _dio.post('orders/$orderId/chat/send/', data: {'message': message});
+  }
+
+  Future<Response> markOrderChatRead(int orderId) {
+    return _dio.post('orders/$orderId/chat/read/');
   }
 }
