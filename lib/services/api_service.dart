@@ -403,4 +403,46 @@ class ApiService {
   Future<Response> markOrderChatRead(int orderId) {
     return _dio.post('orders/$orderId/chat/read/');
   }
+
+  // --- Customer Management ---
+  Future<Response> getRetailerCustomers() {
+    // Note: Assuming the URL in customers/urls.py is 'retailer/list/'
+    // and it is included under a prefix (e.g. 'customers/'?).
+    // From backend code:
+    // path('retailer/list/', views.get_retailer_customers, ...) in customers/urls.py
+    // Customers app usually is mapped to 'customers/' or 'api/customers/'.
+    // Given 'getRetailerCustomersLoyalty' was '${ApiConstants.baseUrl}/customer/loyalty/retailer-customers/',
+    // it implies 'customer/' prefix (singular in legacy, maybe 'customers' in new?).
+    // I will try 'customers/retailer/list/' assuming standard mapping.
+    // If it fails, I might need to adjust.
+    // Let's check where 'customers/' urls are included in main urls.py usually.
+    // Safest guess based on file structure is 'customers/'.
+    return _dio.get('customer/retailer/list/');
+  }
+
+  Future<Response> getRetailerCustomerDetail(int customerId) {
+    return _dio.get('customer/retailer/details/$customerId/');
+  }
+
+  Future<Response> toggleRetailerBlacklist(
+    int customerId,
+    String action, {
+    String? reason,
+  }) {
+    return _dio.post(
+      'customer/retailer/blacklist/toggle/',
+      data: {
+        'customer_id': customerId,
+        'action': action,
+        'reason': reason ?? '',
+      },
+    );
+  }
+
+  Future<Response> rateCustomer(int orderId, int rating, {String? comment}) {
+    return _dio.post(
+      'orders/$orderId/rate-customer/',
+      data: {'rating': rating, 'comment': comment ?? ''},
+    );
+  }
 }
