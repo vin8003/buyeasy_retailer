@@ -69,6 +69,7 @@ class OrderModel {
   final double? pointsRedeemed;
   final double? discountFromPoints;
   final int unreadMessagesCount;
+  final bool hasRetailerRating;
 
   OrderModel({
     required this.id,
@@ -100,6 +101,7 @@ class OrderModel {
     this.pointsRedeemed,
     this.discountFromPoints,
     this.unreadMessagesCount = 0,
+    this.hasRetailerRating = false,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -149,6 +151,7 @@ class OrderModel {
           ? double.tryParse(json['discount_from_points'].toString())
           : null,
       unreadMessagesCount: json['unread_messages_count'] ?? 0,
+      hasRetailerRating: json['has_retailer_rating'] ?? false,
     );
   }
 }

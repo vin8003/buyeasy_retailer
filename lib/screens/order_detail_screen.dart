@@ -11,6 +11,7 @@ import 'order_edit_screen.dart';
 import '../utils/constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'order_chat_screen.dart';
+import '../services/api_service.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -126,6 +127,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     _buildChatCta(order),
                     const SizedBox(height: 24),
                     _buildStatusSection(order, provider),
+                    const SizedBox(height: 24),
+                    _buildRatingSection(order),
                     const SizedBox(height: 24),
                     _buildCustomerSection(order),
                     const SizedBox(height: 24),
@@ -651,6 +654,220 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return Colors.brown;
       default:
         return Colors.grey;
+    }
+  }
+
+  Widget _buildRatingSection(OrderModel order) {
+    if (order.status != 'delivered' && order.status != 'cancelled') {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Customer Rating',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+            if (order.hasRetailerRating)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'You have rated this customer.',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showRatingDialog(order),
+                  icon: const Icon(Icons.star),
+                  label: const Text('Rate Customer'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRatingDialog(OrderModel order) {
+    int rating = 0;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Rate Customer'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Rate your experience with this customer.'),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            index < rating
+                                ? Icons.star_rate_rounded
+                                : Icons.star_border_rounded,
+                            color: Colors.amber,
+                            size: 36,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              rating = index + 1;
+                            });
+                          },
+                        );
+                      }),
+                    ),
+                    // Explicit option for 0 stars / Blacklist
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Mark as Bad/Blacklist (0 Stars)"),
+                      leading: Radio<int>(
+                        value: 0,
+                        groupValue: rating,
+                        onChanged: (val) => setDialogState(() => rating = 0),
+                      ),
+                      onTap: () => setDialogState(() => rating = 0),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Rate Stars (1-5)"),
+                      leading: Radio<int>(
+                        value: 1, // Represents "Using stars"
+                        groupValue: rating > 0
+                            ? 1
+                            : 0, // if rating > 0, select this group.
+                        onChanged: (val) => setDialogState(() => rating = 1),
+                      ),
+                      onTap: () => setDialogState(() => rating = 1),
+                    ),
+
+                    if (rating == 0)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.warning, color: Colors.red, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Warning: A 0-star rating will automatically BLACKLIST this customer.',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: commentController,
+                      decoration: const InputDecoration(
+                        hintText: 'Add a comment (required for blacklist)',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (rating == 0 && commentController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Reason required for 0-star rating'),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context);
+                    await _submitRating(
+                      order.id,
+                      rating,
+                      commentController.text,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: rating == 0 ? Colors.red : Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(rating == 0 ? 'Blacklist & Rate' : 'Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submitRating(int orderId, int rating, String comment) async {
+    try {
+      final response = await ApiService().createRetailerRating(
+        orderId,
+        rating,
+        comment,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rating submitted successfully')),
+        );
+        _fetchDetails();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to submit rating: $e')));
     }
   }
 

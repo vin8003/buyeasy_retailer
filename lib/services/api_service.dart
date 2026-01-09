@@ -342,6 +342,17 @@ class ApiService {
     return _dio.put('retailers/reward-config/', data: data);
   }
 
+  Future<Response> createRetailerRating(
+    int orderId,
+    int rating,
+    String comment,
+  ) {
+    return _dio.post(
+      'orders/$orderId/rate-customer/',
+      data: {'rating': rating, 'comment': comment},
+    );
+  }
+
   // --- OTP/Password Methods ---
   Future<Response> requestPhoneVerification() {
     return _dio.post('auth/customer/request-verification/');
