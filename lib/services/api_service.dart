@@ -14,7 +14,7 @@ class ApiService {
   String? _accessToken;
   String? _refreshToken;
 
-  String _baseUrl = 'https://ordereasy.win/api/';
+  String _baseUrl = 'https://api.ordereasy.win/api/';
 
   // Navigation key to allow navigating from outside the widget tree
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -129,7 +129,7 @@ class ApiService {
   }
 
   Future<void> _initBaseUrl() async {
-    _baseUrl = 'https://ordereasy.win/api/';
+    _baseUrl = 'https://api.ordereasy.win/api/';
     _dio.options.baseUrl = _baseUrl;
     debugPrint('Retailer ApiService Initialized with Base URL: $_baseUrl');
   }
@@ -222,7 +222,7 @@ class ApiService {
   }
 
   Future<void> checkAuthToken() async {
-    _baseUrl = 'https://ordereasy.win/api/';
+    _baseUrl = 'https://api.ordereasy.win/api/';
     _dio.options.baseUrl = _baseUrl;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('access_token');
