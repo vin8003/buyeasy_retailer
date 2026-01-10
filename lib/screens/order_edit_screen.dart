@@ -8,6 +8,7 @@ import '../models/reward_configuration.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import 'product_selection_screen.dart';
+import '../services/api_service.dart';
 
 class OrderEditScreen extends StatefulWidget {
   final OrderModel order;
@@ -487,9 +488,7 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
               children: [
                 if (item.productImage != null)
                   CachedNetworkImage(
-                    imageUrl: item.productImage!.startsWith('http')
-                        ? item.productImage!
-                        : '${ApiConstants.serverUrl}${item.productImage!}',
+                    imageUrl: ApiService().formatImageUrl(item.productImage),
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,

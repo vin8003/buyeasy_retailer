@@ -217,9 +217,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: CachedNetworkImage(
-                              imageUrl: item.productImage!.startsWith('http')
-                                  ? item.productImage!
-                                  : '${ApiConstants.serverUrl}${item.productImage!}',
+                              imageUrl: ApiService().formatImageUrl(
+                                item.productImage,
+                              ),
                               fit: BoxFit.cover,
                               placeholder: (context, url) =>
                                   Container(color: Colors.grey[200]),

@@ -7,6 +7,7 @@ import '../utils/constants.dart';
 import '../models/product_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
+import '../services/api_service.dart';
 
 class ProductFormScreen extends StatefulWidget {
   final Product? product;
@@ -161,10 +162,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       return widget.product!.imageUrl!;
     }
     if (widget.product?.image != null && widget.product!.image!.isNotEmpty) {
-      if (widget.product!.image!.startsWith('http')) {
-        return widget.product!.image!;
-      }
-      return '${ApiConstants.serverUrl}${widget.product!.image!}';
+      return ApiService().formatImageUrl(widget.product!.image);
     }
     return '';
   }

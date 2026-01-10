@@ -7,6 +7,7 @@ import 'product_form_screen.dart';
 import 'bulk_upload_screen.dart';
 import '../providers/product_provider.dart';
 import '../utils/constants.dart';
+import '../services/api_service.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -96,8 +97,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               borderRadius: BorderRadius.circular(4),
                               child: product.image != null
                                   ? CachedNetworkImage(
-                                      imageUrl:
-                                          '${ApiConstants.serverUrl}${product.image}',
+                                      imageUrl: ApiService().formatImageUrl(
+                                        product.image,
+                                      ),
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,

@@ -5,6 +5,7 @@ import '../models/product_model.dart';
 import '../providers/product_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
+import '../services/api_service.dart';
 
 class ProductSelectionScreen extends StatefulWidget {
   const ProductSelectionScreen({super.key});
@@ -93,10 +94,9 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                               borderRadius: BorderRadius.circular(4),
                               child: product.image != null
                                   ? CachedNetworkImage(
-                                      imageUrl:
-                                          product.image!.startsWith('http')
-                                          ? product.image!
-                                          : '${ApiConstants.serverUrl}${product.image}',
+                                      imageUrl: ApiService().formatImageUrl(
+                                        product.image,
+                                      ),
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,

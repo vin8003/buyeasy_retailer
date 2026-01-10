@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import 'profile_edit_screen.dart';
+import '../services/api_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -29,11 +30,7 @@ class ProfileScreen extends StatelessWidget {
             child: CircleAvatar(
               radius: 60,
               backgroundImage: user.shopImage != null
-                  ? NetworkImage(
-                      user.shopImage!.startsWith('http')
-                          ? user.shopImage!
-                          : '${ApiConstants.serverUrl}${user.shopImage!}',
-                    )
+                  ? NetworkImage(ApiService().formatImageUrl(user.shopImage))
                   : null,
               child: user.shopImage == null
                   ? const Icon(Icons.store, size: 60)

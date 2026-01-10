@@ -4,6 +4,7 @@ import '../services/product_service.dart';
 import '../providers/auth_provider.dart';
 import '../models/upload_session.dart';
 import '../utils/constants.dart';
+import '../services/api_service.dart';
 
 class SessionReviewScreen extends StatefulWidget {
   final int sessionId;
@@ -145,8 +146,7 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
 
   String _getImageUrl(String? partialUrl) {
     if (partialUrl == null || partialUrl.isEmpty) return '';
-    if (partialUrl.startsWith('http')) return partialUrl;
-    return '${ApiConstants.serverUrl}$partialUrl';
+    return ApiService().formatImageUrl(partialUrl);
   }
 
   void _showImagePopup(String imageUrl) {
