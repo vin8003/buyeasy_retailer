@@ -9,7 +9,6 @@ import 'retailer_customer_list_screen.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/order_provider.dart';
 import '../services/notification_service.dart';
-import '../services/api_service.dart';
 import 'dart:async';
 
 class DashboardScreen extends StatefulWidget {
@@ -22,24 +21,14 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   StreamSubscription? _notificationSubscription;
-  late final AppLifecycleListener _listener;
 
   @override
   void initState() {
     super.initState();
-    _listener = AppLifecycleListener(onResume: _checkTokenOnResume);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
     });
     _listenForNotifications();
-  }
-
-  Future<void> _checkTokenOnResume() async {
-    final isValid = await ApiService().verifyToken();
-    if (!isValid && mounted) {
-      // Force logout if token is invalid/expired
-      context.read<AuthProvider>().logout();
-    }
   }
 
   void _listenForNotifications() {
@@ -54,7 +43,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
-    _listener.dispose();
     _notificationSubscription?.cancel();
     super.dispose();
   }

@@ -224,7 +224,7 @@ class ApiService {
     // Check memory cache first
     if (_lastVerified != null &&
         DateTime.now().difference(_lastVerified!) <
-            const Duration(minutes: 5)) {
+            const Duration(minutes: 60)) {
       return true;
     }
 
@@ -235,7 +235,7 @@ class ApiService {
       DateTime lastSaved = DateTime.fromMillisecondsSinceEpoch(
         lastVerifiedMillis,
       );
-      if (DateTime.now().difference(lastSaved) < const Duration(minutes: 5)) {
+      if (DateTime.now().difference(lastSaved) < const Duration(minutes: 60)) {
         _lastVerified = lastSaved; // Sync memory cache
         return true;
       }
