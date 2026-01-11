@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import '../services/product_service.dart';
 import '../providers/auth_provider.dart';
 import '../models/upload_session.dart';
-import '../utils/constants.dart';
+
 import '../services/api_service.dart';
+import '../widgets/common_image.dart';
 
 class SessionReviewScreen extends StatefulWidget {
   final int sessionId;
@@ -157,11 +158,7 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
           alignment: Alignment.topRight,
           children: [
             InteractiveViewer(
-              child: Image.network(
-                imageUrl,
-                errorBuilder: (_, __, ___) =>
-                    const Center(child: Icon(Icons.broken_image, size: 50)),
-              ),
+              child: CommonImage(imageUrl: imageUrl, fit: BoxFit.contain),
             ),
             IconButton(
               icon: const Icon(Icons.close, color: Colors.black, size: 30),
@@ -396,17 +393,11 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
                       itemBuilder: (context, index) {
                         return GestureDetector(
                           onTap: () => _showImagePopup(allImages[index]),
-                          child: Image.network(
-                            allImages[index],
+                          child: CommonImage(
+                            imageUrl: allImages[index],
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.broken_image, size: 15),
-                            ),
                           ),
                         );
                       },
@@ -512,12 +503,11 @@ class _SessionReviewScreenState extends State<SessionReviewScreen>
               ? () => _showImagePopup(fullImageUrl)
               : null,
           child: fullImageUrl.isNotEmpty
-              ? Image.network(
-                  fullImageUrl,
+              ? CommonImage(
+                  imageUrl: fullImageUrl,
                   width: 50,
                   height: 50,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                 )
               : const Icon(Icons.image_not_supported),
         ),

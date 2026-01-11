@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import '../widgets/common_image.dart';
 import '../models/order_model.dart';
 import '../services/order_service.dart';
 import '../services/reward_service.dart';
 import '../models/reward_configuration.dart';
 import '../providers/auth_provider.dart';
-import '../utils/constants.dart';
+
 import 'product_selection_screen.dart';
-import '../services/api_service.dart';
 
 class OrderEditScreen extends StatefulWidget {
   final OrderModel order;
@@ -487,15 +486,11 @@ class _OrderEditScreenState extends State<OrderEditScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (item.productImage != null)
-                  CachedNetworkImage(
-                    imageUrl: ApiService().formatImageUrl(item.productImage),
+                  CommonImage(
+                    imageUrl: item.productImage,
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) =>
-                        Container(color: Colors.grey[200]),
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.broken_image, size: 60),
                   )
                 else
                   const Icon(Icons.image, size: 60),

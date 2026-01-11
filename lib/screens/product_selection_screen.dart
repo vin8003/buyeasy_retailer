@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/common_image.dart';
 import '../models/product_model.dart';
 import '../providers/product_provider.dart';
 import '../providers/auth_provider.dart';
-import '../utils/constants.dart';
-import '../services/api_service.dart';
 
 class ProductSelectionScreen extends StatefulWidget {
   const ProductSelectionScreen({super.key});
@@ -89,35 +87,8 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
                           // Retailer might want to add product even if local stock is low?
                           // For now, let's show all but indicate stock.
 
-                          return ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: product.image != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: ApiService().formatImageUrl(
-                                        product.image,
-                                      ),
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.image),
-                                    )
-                                  : const SizedBox(
-                                      width: 50,
-                                      height: 50,
-                                      child: Icon(Icons.image),
-                                    ),
-                            ),
-                            title: Text(product.name),
-                            subtitle: Text(
-                              'Price: ₹${product.price} • Stock: ${product.quantity} ${product.unit}',
-                              style: TextStyle(
-                                color: product.quantity == 0
-                                    ? Colors.red
-                                    : null,
-                              ),
-                            ),
+                          return ProductSelectionItem(
+                            product: product,
                             onTap: () {
                               if (product.quantity > 0) {
                                 Navigator.pop(context, product);
@@ -137,6 +108,50 @@ class _ProductSelectionScreenState extends State<ProductSelectionScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class ProductSelectionItem extends StatefulWidget {
+  final Product product;
+  final VoidCallback onTap;
+
+  const ProductSelectionItem({
+    super.key,
+    required this.product,
+    required this.onTap,
+  });
+
+  @override
+  State<ProductSelectionItem> createState() => _ProductSelectionItemState();
+}
+
+class _ProductSelectionItemState extends State<ProductSelectionItem>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final product = widget.product;
+    return ListTile(
+      leading: product.image != null
+          ? CommonImage(
+              imageUrl: product.image!,
+              width: 50,
+              height: 50,
+              memCacheWidth: 150,
+              memCacheHeight: 150,
+              fit: BoxFit.cover,
+            )
+          : const SizedBox(width: 50, height: 50, child: Icon(Icons.image)),
+      title: Text(product.name),
+      subtitle: Text(
+        'Price: ₹${product.price} • Stock: ${product.quantity} ${product.unit}',
+        style: TextStyle(color: product.quantity == 0 ? Colors.red : null),
+      ),
+      onTap: widget.onTap,
     );
   }
 }

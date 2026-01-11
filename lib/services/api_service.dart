@@ -31,9 +31,14 @@ class ApiService {
   String formatImageUrl(String? path) {
     if (path == null || path.isEmpty) return 'https://via.placeholder.com/150';
     if (path.startsWith('http')) return path;
-    // Remove /api/ from base URL for media paths
-    final serverUrl = _baseUrl.replaceAll('/api/', '/');
-    return '$serverUrl${path.startsWith('/') ? path.substring(1) : path}';
+
+    String mediaBase = _baseUrl;
+    if (mediaBase.endsWith('/api/')) {
+      mediaBase = mediaBase.substring(0, mediaBase.length - 5);
+    } else if (mediaBase.endsWith('/api')) {
+      mediaBase = mediaBase.substring(0, mediaBase.length - 4);
+    }
+    return '$mediaBase${path.startsWith('/') ? path : '/$path'}';
   }
 
   // --- Concurrency / Refresh Locking ---

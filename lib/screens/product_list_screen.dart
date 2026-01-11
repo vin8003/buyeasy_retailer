@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import '../widgets/common_image.dart';
 import '../providers/auth_provider.dart';
 import '../models/product_model.dart';
 import 'product_form_screen.dart';
 import 'bulk_upload_screen.dart';
 import '../providers/product_provider.dart';
-import '../utils/constants.dart';
-import '../services/api_service.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -90,139 +88,25 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       itemCount: productProvider.products.length,
                       itemBuilder: (context, index) {
                         final product = productProvider.products[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: product.image != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: ApiService().formatImageUrl(
-                                        product.image,
-                                      ),
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(
-                                        width: 50,
-                                        height: 50,
-                                        color: Colors.grey[200],
-                                      ),
-                                      errorWidget:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                width: 50,
-                                                height: 50,
-                                                color: Colors.grey[300],
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.broken_image,
-                                                      size: 20,
-                                                    ),
-                                                    Text(
-                                                      error.toString(),
-                                                      style: const TextStyle(
-                                                        fontSize: 6,
-                                                      ),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                    )
-                                  : Container(
-                                      width: 50,
-                                      height: 50,
-                                      color: Colors.grey[200],
-                                      child: const Icon(Icons.image),
-                                    ),
-                            ),
-                            title: Text(product.name),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${product.categoryName ?? 'No Category'} • ${product.unit}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                Text(
-                                  'Stock: ${product.quantity}',
-                                  style: TextStyle(
-                                    color: product.quantity < 10
-                                        ? Colors.red
-                                        : Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '₹${product.price}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    if (product.originalPrice != null)
-                                      Text(
-                                        '₹${product.originalPrice}',
-                                        style: const TextStyle(
-                                          decoration:
-                                              TextDecoration.lineThrough,
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            ProductFormScreen(product: product),
-                                      ),
-                                    ).then((_) => _refreshProducts());
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () {
-                                    _showDeleteDialog(
-                                      context,
-                                      product,
-                                      productProvider,
-                                      token,
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
+                        return ProductListItem(
+                          product: product,
+                          onEdit: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ProductFormScreen(product: product),
+                              ),
+                            ).then((_) => _refreshProducts());
+                          },
+                          onDelete: () {
+                            _showDeleteDialog(
+                              context,
+                              product,
+                              productProvider,
+                              token,
+                            );
+                          },
                         );
                       },
                     ),
@@ -259,6 +143,108 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ProductListItem extends StatefulWidget {
+  final Product product;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const ProductListItem({
+    super.key,
+    required this.product,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<ProductListItem> createState() => _ProductListItemState();
+}
+
+class _ProductListItemState extends State<ProductListItem>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final product = widget.product;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: product.image != null
+            ? CommonImage(
+                imageUrl: product.image!,
+                width: 50,
+                height: 50,
+                memCacheWidth: 150,
+                memCacheHeight: 150,
+                fit: BoxFit.cover,
+              )
+            : Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.image),
+              ),
+        title: Text(product.name),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${product.categoryName ?? 'No Category'} • ${product.unit}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+            Text(
+              'Stock: ${product.quantity}',
+              style: TextStyle(
+                color: product.quantity < 10 ? Colors.red : Colors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '₹${product.price}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                if (product.originalPrice != null)
+                  Text(
+                    '₹${product.originalPrice}',
+                    style: const TextStyle(
+                      decoration: TextDecoration.lineThrough,
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.blue),
+              onPressed: widget.onEdit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: widget.onDelete,
+            ),
+          ],
+        ),
       ),
     );
   }

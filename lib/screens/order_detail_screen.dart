@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import '../widgets/common_image.dart';
 import '../models/order_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/notification_service.dart';
 import 'order_edit_screen.dart';
-import '../utils/constants.dart';
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'order_chat_screen.dart';
 import '../services/api_service.dart';
@@ -214,18 +214,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: item.productImage != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
-                              imageUrl: ApiService().formatImageUrl(
-                                item.productImage,
-                              ),
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  Container(color: Colors.grey[200]),
-                              errorWidget: (context, url, error) =>
-                                  const Icon(Icons.broken_image),
-                            ),
+                        ? CommonImage(
+                            imageUrl: item.productImage,
+                            fit: BoxFit.cover,
                           )
                         : const Icon(Icons.shopping_bag, color: Colors.grey),
                   ),
@@ -678,7 +669,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.green),
                 ),
@@ -782,7 +773,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         margin: const EdgeInsets.only(top: 8),
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.red),
                         ),
