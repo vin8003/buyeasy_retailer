@@ -201,16 +201,44 @@ class ApiService {
     }
   }
 
+  Future<void> _markTokenAsVerified() async {
+    _lastVerified = DateTime.now();
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'last_verified_timestamp',
+        _lastVerified!.millisecondsSinceEpoch,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving verification timestamp: $e');
+      }
+    }
+  }
+
   DateTime? _lastVerified;
 
   Future<bool> verifyToken() async {
     if (_accessToken == null) return false;
 
-    // Cache verification for 5 minutes to prevent 429s (Too Many Requests)
+    // Check memory cache first
     if (_lastVerified != null &&
         DateTime.now().difference(_lastVerified!) <
             const Duration(minutes: 5)) {
       return true;
+    }
+
+    // Check persistent cache (for app restarts/web reloads)
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? lastVerifiedMillis = prefs.getInt('last_verified_timestamp');
+    if (lastVerifiedMillis != null) {
+      DateTime lastSaved = DateTime.fromMillisecondsSinceEpoch(
+        lastVerifiedMillis,
+      );
+      if (DateTime.now().difference(lastSaved) < const Duration(minutes: 5)) {
+        _lastVerified = lastSaved; // Sync memory cache
+        return true;
+      }
     }
 
     // Use a fresh Dio instance to avoid interceptors
@@ -231,7 +259,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        _lastVerified = DateTime.now();
+        await _markTokenAsVerified();
         return true;
       }
       return false;
@@ -239,7 +267,7 @@ class ApiService {
       try {
         final newAccessToken = await _refreshTokenAndGetNew(dioClient: tempDio);
         if (newAccessToken != null) {
-          _lastVerified = DateTime.now();
+          // _refreshTokenAndGetNew calls setAuthToken which now calls _markTokenAsVerified
           return true;
         }
         return false;
@@ -306,11 +334,16 @@ class ApiService {
     if (access == null) {
       await prefs.remove('access_token');
       await prefs.remove('refresh_token');
+      await prefs.remove(
+        'last_verified_timestamp',
+      ); // Clear verification on logout
     } else {
       await prefs.setString('access_token', access);
       if (refresh != null) {
         await prefs.setString('refresh_token', refresh);
       }
+      // Consider this token verified since we just set it (login/refresh)
+      await _markTokenAsVerified();
     }
   }
 
