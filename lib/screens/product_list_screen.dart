@@ -114,8 +114,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                                 width: 50,
                                                 height: 50,
                                                 color: Colors.grey[300],
-                                                child: const Icon(
-                                                  Icons.broken_image,
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.broken_image,
+                                                      size: 20,
+                                                    ),
+                                                    Text(
+                                                      error.toString(),
+                                                      style: const TextStyle(
+                                                        fontSize: 6,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                     )
