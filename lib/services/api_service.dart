@@ -201,32 +201,73 @@ class ApiService {
     }
   }
 
+  DateTime? _lastVerified;
+
   Future<bool> verifyToken() async {
     if (_accessToken == null) return false;
 
+    // Cache verification for 5 minutes to prevent 429s (Too Many Requests)
+    if (_lastVerified != null &&
+        DateTime.now().difference(_lastVerified!) <
+            const Duration(minutes: 5)) {
+      return true;
+    }
+
+    // Use a fresh Dio instance to avoid interceptors
+    final tempDio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
     try {
-      final response = await _dio.post(
+      final response = await tempDio.post(
         'auth/token/verify/',
         data: {'token': _accessToken},
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        _lastVerified = DateTime.now();
+        return true;
+      }
+      return false;
     } catch (e) {
       try {
-        final newAccessToken = await _refreshTokenAndGetNew();
-        return newAccessToken != null;
+        final newAccessToken = await _refreshTokenAndGetNew(dioClient: tempDio);
+        if (newAccessToken != null) {
+          _lastVerified = DateTime.now();
+          return true;
+        }
+        return false;
       } catch (refreshError) {
         return false;
       }
     }
   }
 
-  Future<String?> _refreshTokenAndGetNew() async {
+  Future<String?> _refreshTokenAndGetNew({Dio? dioClient}) async {
     try {
       if (_refreshToken == null) {
         return null;
       }
-      final response = await _dio.post(
+
+      final client =
+          dioClient ??
+          Dio(
+            BaseOptions(
+              baseUrl: _baseUrl,
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+            ),
+          );
+
+      final response = await client.post(
         'auth/token/refresh/',
         data: {'refresh': _refreshToken},
       );
