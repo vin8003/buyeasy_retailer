@@ -201,8 +201,31 @@ class ApiService {
     }
   }
 
+  Future<bool> verifyToken() async {
+    if (_accessToken == null) return false;
+
+    try {
+      final response = await _dio.post(
+        'auth/token/verify/',
+        data: {'token': _accessToken},
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      try {
+        final newAccessToken = await _refreshTokenAndGetNew();
+        return newAccessToken != null;
+      } catch (refreshError) {
+        return false;
+      }
+    }
+  }
+
   Future<String?> _refreshTokenAndGetNew() async {
     try {
+      if (_refreshToken == null) {
+        return null;
+      }
       final response = await _dio.post(
         'auth/token/refresh/',
         data: {'refresh': _refreshToken},
@@ -217,6 +240,11 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('Token Refresh Failed: $e');
+      if (e is DioException) {
+        if (e.response?.statusCode == 401) {
+          return null;
+        }
+      }
     }
     return null;
   }
