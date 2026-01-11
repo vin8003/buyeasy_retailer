@@ -1,5 +1,6 @@
 class ApiConstants {
   static const String _serverUrl = 'https://api.ordereasy.win';
+  // static const String _serverUrl = 'http://127.0.0.1:8000';
 
   static String get serverUrl => _serverUrl;
   static String get baseUrl => '$serverUrl/api';

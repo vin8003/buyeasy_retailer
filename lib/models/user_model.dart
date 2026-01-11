@@ -27,6 +27,9 @@ class UserModel {
   final int deliveryRadius;
   final List<String> serviceablePincodes;
 
+  final String upiId;
+  final String? upiQrCode;
+
   UserModel({
     required this.id,
     required this.username,
@@ -50,6 +53,8 @@ class UserModel {
     this.businessType = '',
     this.gstNumber = '',
     this.panNumber = '',
+    this.upiId = '',
+    this.upiQrCode,
     this.offersDelivery = true,
     this.offersPickup = true,
     this.minimumOrderAmount = 0,
@@ -85,6 +90,8 @@ class UserModel {
       businessType: json['business_type'] ?? '',
       gstNumber: json['gst_number'] ?? '',
       panNumber: json['pan_number'] ?? '',
+      upiId: json['upi_id'] ?? '',
+      upiQrCode: json['upi_qr_code'],
       offersDelivery: json['offers_delivery'] ?? true,
       offersPickup: json['offers_pickup'] ?? true,
       minimumOrderAmount: double.parse(

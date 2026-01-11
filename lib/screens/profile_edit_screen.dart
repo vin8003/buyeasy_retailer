@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/user_model.dart';
 import 'phone_verification_screen.dart';
 
@@ -37,6 +42,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   late TextEditingController _businessTypeController;
   late TextEditingController _gstNumberController;
   late TextEditingController _panNumberController;
+  late TextEditingController _upiIdController;
+
+  // File Uploads
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedQrCodeImage;
+  PlatformFile? _selectedQrCodeWeb;
 
   // Service Settings
   late TextEditingController _deliveryRadiusController;
@@ -80,7 +91,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       text: widget.user.businessType,
     );
     _gstNumberController = TextEditingController(text: widget.user.gstNumber);
+    _gstNumberController = TextEditingController(text: widget.user.gstNumber);
     _panNumberController = TextEditingController(text: widget.user.panNumber);
+    _upiIdController = TextEditingController(text: widget.user.upiId);
 
     _deliveryRadiusController = TextEditingController(
       text: widget.user.deliveryRadius.toString(),
@@ -111,7 +124,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _countryController.dispose();
     _businessTypeController.dispose();
     _gstNumberController.dispose();
+    _gstNumberController.dispose();
     _panNumberController.dispose();
+    _upiIdController.dispose();
     _deliveryRadiusController.dispose();
     _pincodesController.dispose();
     _minOrderAmountController.dispose();
@@ -130,7 +145,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           .where((e) => e.isNotEmpty && e.length == 6)
           .toList();
 
-      final data = {
+      final Map<String, dynamic> data = {
         'shop_name': _shopNameController.text,
         'shop_description': _shopDescriptionController.text,
         'contact_email': _contactEmailController.text,
@@ -145,6 +160,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         'business_type': _businessTypeController.text,
         'gst_number': _gstNumberController.text,
         'pan_number': _panNumberController.text,
+        'upi_id': _upiIdController.text,
         'offers_delivery': _offersDelivery,
         'offers_pickup': _offersPickup,
         'delivery_radius': int.parse(_deliveryRadiusController.text),
@@ -152,7 +168,40 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         'minimum_order_amount': double.parse(_minOrderAmountController.text),
       };
 
-      await context.read<AuthProvider>().updateProfile(data);
+      // Check if we have an image to upload
+      dynamic updateData;
+
+      if (_selectedQrCodeImage != null || _selectedQrCodeWeb != null) {
+        final formData = FormData.fromMap(data);
+
+        if (_selectedQrCodeImage != null) {
+          String fileName = _selectedQrCodeImage!.path.split('/').last;
+          formData.files.add(
+            MapEntry(
+              'upi_qr_code',
+              await MultipartFile.fromFile(
+                _selectedQrCodeImage!.path,
+                filename: fileName,
+              ),
+            ),
+          );
+        } else if (_selectedQrCodeWeb != null) {
+          formData.files.add(
+            MapEntry(
+              'upi_qr_code',
+              MultipartFile.fromBytes(
+                _selectedQrCodeWeb!.bytes!,
+                filename: _selectedQrCodeWeb!.name,
+              ),
+            ),
+          );
+        }
+        updateData = formData;
+      } else {
+        updateData = data;
+      }
+
+      await context.read<AuthProvider>().updateProfile(updateData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -298,6 +347,65 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               _buildTextField(_businessTypeController, 'Business Type'),
               _buildTextField(_gstNumberController, 'GST Number'),
               _buildTextField(_panNumberController, 'PAN Number'),
+              _buildTextField(_upiIdController, 'UPI ID'),
+
+              const SizedBox(height: 16),
+              const Text(
+                'UPI QR Code',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Column(
+                  children: [
+                    if (_selectedQrCodeImage != null)
+                      Image.file(_selectedQrCodeImage!, height: 150)
+                    else if (_selectedQrCodeWeb != null &&
+                        _selectedQrCodeWeb!.bytes != null)
+                      Image.memory(_selectedQrCodeWeb!.bytes!, height: 150)
+                    else if (widget.user.upiQrCode != null)
+                      Image.network(widget.user.upiQrCode!, height: 150)
+                    else
+                      Container(
+                        height: 150,
+                        width: 150,
+                        color: Colors.grey[200],
+                        child: const Icon(
+                          Icons.qr_code,
+                          size: 50,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        if (kIsWeb) {
+                          FilePickerResult? result = await FilePicker.platform
+                              .pickFiles(type: FileType.image);
+                          if (result != null) {
+                            setState(() {
+                              _selectedQrCodeWeb = result.files.first;
+                              _selectedQrCodeImage = null;
+                            });
+                          }
+                        } else {
+                          final XFile? image = await _picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (image != null) {
+                            setState(() {
+                              _selectedQrCodeImage = File(image.path);
+                              _selectedQrCodeWeb = null;
+                            });
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.upload),
+                      label: const Text('Upload QR Code'),
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 32),
               _buildSectionHeader('Service & Delivery Settings'),
