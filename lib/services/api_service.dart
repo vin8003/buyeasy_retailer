@@ -327,7 +327,7 @@ class ApiService {
 
   Future<void> checkAuthToken() async {
     _baseUrl = 'https://api.ordereasy.win/api/';
-    // _baseUrl = 'http://127.0.0.1:8000/api/';
+    //_baseUrl = 'http://127.0.0.1:8000/api/';
     _dio.options.baseUrl = _baseUrl;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('access_token');
